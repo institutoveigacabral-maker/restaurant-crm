@@ -4,6 +4,8 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import WebVitals from "@/components/WebVitals";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +35,8 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <WebVitals />
         <Providers>{children}</Providers>
+              <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
