@@ -16,7 +16,7 @@ jobs:
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
-            
+            https://deploy-restaurant-crm.vercel.app
           budgetPath: .github/lighthouse/budget.json
           uploadArtifacts: true
 
