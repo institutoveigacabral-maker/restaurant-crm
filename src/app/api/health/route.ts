@@ -13,6 +13,8 @@ interface HealthCheck {
   };
 }
 
+const DB_TIMEOUT_MS = 5000;
+
 export async function GET() {
   const memoryUsage = process.memoryUsage();
 
@@ -22,7 +24,12 @@ export async function GET() {
 
   try {
     const start = Date.now();
-    await db.execute(sql`SELECT 1`);
+    await Promise.race([
+      db.execute(sql`SELECT 1`),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Database timeout")), DB_TIMEOUT_MS)
+      ),
+    ]);
     dbLatency = Date.now() - start;
   } catch (error) {
     dbStatus = "unhealthy";
@@ -52,5 +59,8 @@ export async function GET() {
 
   return NextResponse.json(health, {
     status: overallStatus === "healthy" ? 200 : 503,
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+    },
   });
 }
