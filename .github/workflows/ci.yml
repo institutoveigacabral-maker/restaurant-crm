@@ -7,17 +7,27 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
-      AUTH_SECRET: "ci-dummy-secret"
-      NEXTAUTH_URL: "http://localhost:3000"
+      AUTH_SECRET: "ci-dummy-secret-minimum-16-chars"
+      AUTH_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm install --legacy-peer-deps
-      - run: npm run build
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: TypeScript
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Unit Tests
+        run: pnpm test
+      - name: Build
+        run: pnpm build
