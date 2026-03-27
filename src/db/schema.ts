@@ -10,9 +10,10 @@ import {
   jsonb,
   primaryKey,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 
-// ── Auth Tables ──────────────────────────────────────────────
+// ── Auth Tables (Global — sem tenantId) ─────────────────────
 
 export const users = pgTable("users", {
   id: text("id")
@@ -65,10 +66,49 @@ export const verificationTokens = pgTable(
   (table) => [primaryKey({ columns: [table.identifier, table.token] })]
 );
 
-// ── Business Tables ──────────────────────────────────────────
+// ── Multi-Tenancy ───────────────────────────────────────────
+
+export const tenants = pgTable("tenants", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).unique().notNull(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parentId: text("parent_id").references((): any => tenants.id),
+  logo: text("logo"),
+  primaryColor: varchar("primary_color", { length: 20 }).default("#1a365d"),
+  secondaryColor: varchar("secondary_color", { length: 20 }).default("#e2e8f0"),
+  customDomain: varchar("custom_domain", { length: 255 }),
+  plan: varchar("plan", { length: 50 }).default("starter"),
+  active: boolean("active").default(true),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const tenantUsers = pgTable(
+  "tenant_users",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 50 }).default("staff"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [unique().on(table.tenantId, table.userId)]
+);
+
+// ── Business Tables ─────────────────────────────────────────
 
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 50 }).notNull(),
@@ -83,6 +123,9 @@ export const customers = pgTable("customers", {
 
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   customerId: integer("customer_id").references(() => customers.id, {
     onDelete: "cascade",
   }),
@@ -99,6 +142,9 @@ export const reservations = pgTable("reservations", {
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   customerId: integer("customer_id").references(() => customers.id, {
     onDelete: "cascade",
   }),
@@ -113,6 +159,9 @@ export const orders = pgTable("orders", {
 
 export const activityLog = pgTable("activity_log", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id),
   action: varchar("action", { length: 50 }).notNull(),
   entity: varchar("entity", { length: 50 }).notNull(),
@@ -121,10 +170,13 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ── Menu Tables ──────────────────────────────────────────────
+// ── Menu Tables ─────────────────────────────────────────────
 
 export const menuCategories = pgTable("menu_categories", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description").default(""),
   sortOrder: integer("sort_order").default(0),
@@ -133,6 +185,9 @@ export const menuCategories = pgTable("menu_categories", {
 
 export const menuItems = pgTable("menu_items", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   categoryId: integer("category_id").references(() => menuCategories.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description").default(""),
@@ -143,10 +198,13 @@ export const menuItems = pgTable("menu_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ── Notifications ────────────────────────────────────────────
+// ── Notifications ───────────────────────────────────────────
 
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
@@ -160,6 +218,9 @@ export const notifications = pgTable("notifications", {
 
 export const webhooks = pgTable("webhooks", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   url: varchar("url", { length: 1000 }).notNull(),
   secret: varchar("secret", { length: 255 }),
@@ -170,6 +231,9 @@ export const webhooks = pgTable("webhooks", {
 
 export const webhookLogs = pgTable("webhook_logs", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   webhookId: integer("webhook_id").references(() => webhooks.id, { onDelete: "cascade" }),
   event: varchar("event", { length: 100 }).notNull(),
   payload: jsonb("payload"),
@@ -183,6 +247,9 @@ export const webhookLogs = pgTable("webhook_logs", {
 
 export const restaurantSettings = pgTable("restaurant_settings", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull().default("Meu Restaurante"),
   slug: varchar("slug", { length: 100 }).unique(),
   logo: text("logo"),
@@ -202,16 +269,22 @@ export const restaurantSettings = pgTable("restaurant_settings", {
 
 export const featureFlags = pgTable("feature_flags", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   key: varchar("key", { length: 100 }).notNull().unique(),
   enabled: boolean("enabled").default(false),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ── Gamification & Training Tables ───────────────────────────
+// ── Gamification & Training Tables ──────────────────────────
 
 export const employeeProfiles = pgTable("employee_profiles", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
@@ -229,6 +302,9 @@ export const employeeProfiles = pgTable("employee_profiles", {
 
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 100 }).notNull(),
@@ -246,6 +322,9 @@ export const courses = pgTable("courses", {
 
 export const courseEnrollments = pgTable("course_enrollments", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -262,6 +341,9 @@ export const courseEnrollments = pgTable("course_enrollments", {
 
 export const xpTransactions = pgTable("xp_transactions", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -274,6 +356,9 @@ export const xpTransactions = pgTable("xp_transactions", {
 
 export const badges = pgTable("badges", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
   icon: varchar("icon", { length: 50 }).notNull(),
@@ -287,6 +372,9 @@ export const badges = pgTable("badges", {
 
 export const employeeBadges = pgTable("employee_badges", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -298,6 +386,9 @@ export const employeeBadges = pgTable("employee_badges", {
 
 export const challenges = pgTable("challenges", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 50 }).notNull(),
@@ -312,6 +403,9 @@ export const challenges = pgTable("challenges", {
 
 export const challengeParticipations = pgTable("challenge_participations", {
   id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -321,5 +415,203 @@ export const challengeParticipations = pgTable("challenge_participations", {
   currentProgress: integer("current_progress").default(0),
   completed: boolean("completed").default(false),
   completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Module: DIAGNOSTICO ─────────────────────────────────────
+
+export const diagnostics = pgTable("diagnostics", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  createdBy: text("created_by").references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  status: varchar("status", { length: 20 }).default("draft"),
+  answers: jsonb("answers").default({}),
+  scores: jsonb("scores").default({}),
+  overallScore: decimal("overall_score", { precision: 4, scale: 2 }),
+  report: jsonb("report"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const diagnosticTemplates = pgTable("diagnostic_templates", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id").references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  sections: jsonb("sections").notNull(),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Module: COMANDO ─────────────────────────────────────────
+
+export const sops = pgTable("sops", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(),
+  content: text("content"),
+  version: integer("version").default(1),
+  status: varchar("status", { length: 20 }).default("draft"),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  url: text("url"),
+  metadata: jsonb("metadata").default({}),
+  uploadedBy: text("uploaded_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const onboardingChecklists = pgTable("onboarding_checklists", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  items: jsonb("items").notNull(),
+  role: varchar("role", { length: 50 }),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const onboardingProgress = pgTable("onboarding_progress", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  checklistId: integer("checklist_id")
+    .notNull()
+    .references(() => onboardingChecklists.id, { onDelete: "cascade" }),
+  completedItems: jsonb("completed_items").default([]),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Module: CLONES ──────────────────────────────────────────
+
+export const clones = pgTable("clones", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  department: varchar("department", { length: 100 }),
+  status: varchar("status", { length: 20 }).default("training"),
+  config: jsonb("config").default({}),
+  phoneNumber: varchar("phone_number", { length: 50 }),
+  stats: jsonb("stats").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const cloneKnowledgeBase = pgTable("clone_knowledge_base", {
+  id: serial("id").primaryKey(),
+  cloneId: integer("clone_id")
+    .notNull()
+    .references(() => clones.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  content: text("content").notNull(),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Module: AUTOMACOES ──────────────────────────────────────
+
+export const automations = pgTable("automations", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  trigger: jsonb("trigger").default({}),
+  actions: jsonb("actions").default([]),
+  active: boolean("active").default(true),
+  executionCount: integer("execution_count").default(0),
+  lastExecutedAt: timestamp("last_executed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const automationLogs = pgTable("automation_logs", {
+  id: serial("id").primaryKey(),
+  automationId: integer("automation_id")
+    .notNull()
+    .references(() => automations.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull(),
+  input: jsonb("input"),
+  output: jsonb("output"),
+  executedAt: timestamp("executed_at").defaultNow(),
+});
+
+// ── Module: RECEITAS (Loyalty) ──────────────────────────────
+
+export const loyaltyPrograms = pgTable("loyalty_programs", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).default("points"),
+  rules: jsonb("rules").default({}),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const loyaltyBalances = pgTable("loyalty_balances", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => customers.id, { onDelete: "cascade" }),
+  programId: integer("program_id")
+    .notNull()
+    .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
+  points: integer("points").default(0),
+  tier: varchar("tier", { length: 50 }),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const loyaltyTransactions = pgTable("loyalty_transactions", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => customers.id, { onDelete: "cascade" }),
+  programId: integer("program_id")
+    .notNull()
+    .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 20 }).notNull(),
+  points: integer("points").notNull(),
+  orderId: integer("order_id").references(() => orders.id),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
 });

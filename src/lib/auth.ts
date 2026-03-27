@@ -4,6 +4,25 @@ import { compare } from "bcryptjs";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getDefaultTenantForUser } from "@/lib/tenant";
+
+declare module "next-auth" {
+  interface User {
+    role?: string;
+    tenantId?: string;
+    tenantSlug?: string;
+    tenantName?: string;
+  }
+}
+
+declare module "@auth/core/jwt" {
+  interface JWT {
+    role?: string;
+    tenantId?: string;
+    tenantSlug?: string;
+    tenantName?: string;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
@@ -15,8 +34,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as Record<string, unknown>).role as string;
+        token.role = user.role;
         token.id = user.id;
+        token.tenantId = user.tenantId;
+        token.tenantSlug = user.tenantSlug;
+        token.tenantName = user.tenantName;
       }
       return token;
     },
@@ -24,7 +46,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role = token.role as string;
+        const u = session.user as any;
+        u.role = token.role;
+        u.tenantId = token.tenantId;
+        u.tenantSlug = token.tenantSlug;
+        u.tenantName = token.tenantName;
       }
       return session;
     },
@@ -60,11 +86,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const isValid = await compare(password, user.password);
         if (!isValid) return null;
 
+        // Resolve default tenant for user
+        const tenant = await getDefaultTenantForUser(user.id);
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: tenant?.role ?? user.role,
+          tenantId: tenant?.tenantId,
+          tenantSlug: tenant?.tenantSlug,
+          tenantName: tenant?.tenantName,
         };
       },
     }),
