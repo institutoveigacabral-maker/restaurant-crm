@@ -15,14 +15,8 @@ declare module "next-auth" {
   }
 }
 
-declare module "@auth/core/jwt" {
-  interface JWT {
-    role?: string;
-    tenantId?: string;
-    tenantSlug?: string;
-    tenantName?: string;
-  }
-}
+// JWT type extended via next-auth User augmentation above
+// tenantId/tenantSlug/tenantName flow through jwt() and session() callbacks
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {

@@ -77,7 +77,7 @@ describe("API utils error handling logic", () => {
     });
 
     it("non-Error values default to generic message", () => {
-      const error = "string error";
+      const error: unknown = "string error";
       const message = error instanceof Error ? error.message : "Erro interno do servidor";
       expect(message).toBe("Erro interno do servidor");
     });
