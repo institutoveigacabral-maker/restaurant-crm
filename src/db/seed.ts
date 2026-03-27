@@ -1,4 +1,7 @@
+import { config } from "dotenv";
 import { neon } from "@neondatabase/serverless";
+
+config({ path: ".env.local" });
 import { drizzle } from "drizzle-orm/neon-http";
 import { hash } from "bcryptjs";
 import * as schema from "./schema";
