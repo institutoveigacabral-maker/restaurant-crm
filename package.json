@@ -1,5 +1,5 @@
 {
-  "name": "restaurant-crm",
+  "name": "nexial-rede-neural",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,6 +19,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
+    "db:seed": "npx tsx src/db/seed.ts",
     "validate": "npm run typecheck && npm run lint && npm run test",
     "prepare": "husky"
   },
