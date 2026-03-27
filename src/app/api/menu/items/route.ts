@@ -14,8 +14,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
-    const data = await getAllMenuItems();
+    const data = await getAllMenuItems(tenantId);
     return successResponse(data);
   } catch (error) {
     return handleApiError(error);
@@ -26,10 +29,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const validated = menuItemSchema.parse(body);
-    const item = await createMenuItem(validated);
+    const item = await createMenuItem(tenantId, validated);
 
     return successResponse(item, 201);
   } catch (error) {
@@ -41,17 +47,20 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
 
     // Check if this is a toggle availability request
     if (body.toggleAvailability && body.id) {
-      const item = await toggleMenuItemAvailability(Number(body.id));
+      const item = await toggleMenuItemAvailability(tenantId, Number(body.id));
       return successResponse(item);
     }
 
     const validated = menuItemUpdateSchema.parse(body);
-    const item = await updateMenuItem(validated);
+    const item = await updateMenuItem(tenantId, validated);
 
     return successResponse(item);
   } catch (error) {
@@ -63,12 +72,15 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     if (!id) return errorResponse("ID inválido");
 
-    await softDeleteMenuItem(id);
+    await softDeleteMenuItem(tenantId, id);
 
     return successResponse({ ok: true });
   } catch (error) {

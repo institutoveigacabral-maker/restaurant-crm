@@ -8,8 +8,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
-    const data = await getAllOrders();
+    const data = await getAllOrders(tenantId);
     return successResponse(data);
   } catch (error) {
     return handleApiError(error);
@@ -20,13 +23,16 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const { id, status } = body;
     if (!id || !status) return errorResponse("ID e status são obrigatórios");
 
-    const order = await updateOrderStatus(Number(id), status);
-    await logActivity(session.user.id!, "update", "order", id, { status });
+    const order = await updateOrderStatus(tenantId, Number(id), status);
+    await logActivity(tenantId, session.user.id!, "update", "order", id, { status });
 
     return successResponse(order);
   } catch (error) {
@@ -38,13 +44,16 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));
     if (!id) return errorResponse("ID inválido");
 
-    await softDeleteOrder(id);
-    await logActivity(session.user.id!, "delete", "order", id);
+    await softDeleteOrder(tenantId, id);
+    await logActivity(tenantId, session.user.id!, "delete", "order", id);
 
     return successResponse({ ok: true });
   } catch (error) {

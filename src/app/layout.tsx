@@ -13,8 +13,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "RestaurantCRM - Gestão de Clientes",
-  description: "CRM para gestão de clientes de restaurante",
+  title: "Nexial Rede Neural",
+  description: "Plataforma de inteligencia operacional para negocios",
 };
 
 export default function RootLayout({

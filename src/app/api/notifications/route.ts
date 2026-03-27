@@ -13,11 +13,14 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const userId = session.user.id!;
     const [notificationList, unreadCount] = await Promise.all([
-      getNotifications(userId),
-      getUnreadCount(userId),
+      getNotifications(tenantId, userId),
+      getUnreadCount(tenantId, userId),
     ]);
 
     return successResponse({ notifications: notificationList, unreadCount });
@@ -30,6 +33,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const role = (session.user as Record<string, unknown>).role;
     if (role !== "admin") {
@@ -49,7 +55,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Título e mensagem são obrigatórios");
     }
 
-    const notification = await createNotification({
+    const notification = await createNotification(tenantId, {
       userId: userId ?? null,
       title,
       message,
@@ -67,18 +73,21 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const { id, all } = body as { id?: number; all?: boolean };
 
     if (all) {
-      await markAllAsRead(session.user.id!);
+      await markAllAsRead(tenantId, session.user.id!);
       return successResponse({ ok: true });
     }
 
     if (!id) return errorResponse("ID da notificação é obrigatório");
 
-    await markAsRead(id);
+    await markAsRead(tenantId, id);
     return successResponse({ ok: true });
   } catch (error) {
     return handleApiError(error);

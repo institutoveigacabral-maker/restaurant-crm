@@ -14,8 +14,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
-    const data = await getAllCustomers();
+    const data = await getAllCustomers(tenantId);
     return successResponse(data);
   } catch (error) {
     return handleApiError(error);
@@ -26,12 +29,15 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const validated = customerSchema.parse(body);
-    const customer = await createCustomer(validated);
+    const customer = await createCustomer(tenantId, validated);
 
-    await logActivity(session.user.id!, "create", "customer", customer.id, {
+    await logActivity(tenantId, session.user.id!, "create", "customer", customer.id, {
       name: validated.name,
     });
 
@@ -45,12 +51,15 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const validated = customerUpdateSchema.parse(body);
-    const customer = await updateCustomer(validated);
+    const customer = await updateCustomer(tenantId, validated);
 
-    await logActivity(session.user.id!, "update", "customer", validated.id, {
+    await logActivity(tenantId, session.user.id!, "update", "customer", validated.id, {
       name: validated.name,
     });
 
@@ -64,6 +73,9 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const role = (session.user as Record<string, unknown>).role;
     if (role !== "admin" && role !== "gerente") {
@@ -74,8 +86,8 @@ export async function DELETE(req: NextRequest) {
     const id = Number(searchParams.get("id"));
     if (!id) return errorResponse("ID inválido");
 
-    await softDeleteCustomer(id);
-    await logActivity(session.user.id!, "delete", "customer", id);
+    await softDeleteCustomer(tenantId, id);
+    await logActivity(tenantId, session.user.id!, "delete", "customer", id);
 
     return successResponse({ ok: true });
   } catch (error) {

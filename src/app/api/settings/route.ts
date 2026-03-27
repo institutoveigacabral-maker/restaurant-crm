@@ -12,8 +12,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
-    const settings = await getSettings();
+    const settings = await getSettings(tenantId);
     return successResponse(settings);
   } catch (error) {
     return handleApiError(error);
@@ -24,6 +27,9 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
 
@@ -31,7 +37,11 @@ export async function PUT(req: NextRequest) {
     const id = typeof body.id === "number" ? body.id : undefined;
     if (!id) return errorResponse("ID é obrigatório");
 
-    const updated = await updateSettings(id, body as Parameters<typeof updateSettings>[1]);
+    const updated = await updateSettings(
+      tenantId,
+      id,
+      body as Parameters<typeof updateSettings>[2]
+    );
     return successResponse(updated);
   } catch (error) {
     return handleApiError(error);

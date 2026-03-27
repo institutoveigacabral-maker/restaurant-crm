@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { getActiveChallenges } from "@/services/challenges";
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = req.nextUrl;
-    const userId = searchParams.get("userId") || "admin-user-id";
+    const session = await auth();
+    if (!session?.user)
+      return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId)
+      return NextResponse.json({ success: false, error: "No tenant" }, { status: 400 });
 
-    const result = await getActiveChallenges(userId);
+    const { searchParams } = req.nextUrl;
+    const userId = searchParams.get("userId") || session.user.id!;
+
+    const result = await getActiveChallenges(tenantId, userId);
     return NextResponse.json({ success: true, data: result });
   } catch (err) {
     return NextResponse.json(

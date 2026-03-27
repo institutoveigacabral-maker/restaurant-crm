@@ -8,8 +8,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
-    const data = await getAllCategories();
+    const data = await getAllCategories(tenantId);
     return successResponse(data);
   } catch (error) {
     return handleApiError(error);
@@ -20,10 +23,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
     const validated = menuCategorySchema.parse(body);
-    const category = await createCategory(validated);
+    const category = await createCategory(tenantId, validated);
 
     return successResponse(category, 201);
   } catch (error) {

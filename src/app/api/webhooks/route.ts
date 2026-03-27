@@ -12,10 +12,13 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
 
-    const data = await getAllWebhooks();
+    const data = await getAllWebhooks(tenantId);
     return successResponse(data);
   } catch (error) {
     return handleApiError(error);
@@ -26,6 +29,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
 
@@ -38,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     if (!name || !url) return errorResponse("Nome e URL são obrigatórios");
 
-    const webhook = await createWebhook({ name, url, events: events ?? [] });
+    const webhook = await createWebhook(tenantId, { name, url, events: events ?? [] });
     return successResponse(webhook, 201);
   } catch (error) {
     return handleApiError(error);
@@ -49,6 +55,9 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
 
@@ -63,7 +72,7 @@ export async function PUT(req: NextRequest) {
 
     if (!id) return errorResponse("ID inválido");
 
-    const webhook = await updateWebhook(id, data);
+    const webhook = await updateWebhook(tenantId, id, data);
     return successResponse(webhook);
   } catch (error) {
     return handleApiError(error);
@@ -74,6 +83,9 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tenantId = (session.user as any).tenantId as string;
+    if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
 
@@ -81,7 +93,7 @@ export async function DELETE(req: NextRequest) {
     const id = Number(searchParams.get("id"));
     if (!id) return errorResponse("ID inválido");
 
-    await deleteWebhook(id);
+    await deleteWebhook(tenantId, id);
     return successResponse({ ok: true });
   } catch (error) {
     return handleApiError(error);
