@@ -1,20 +1,21 @@
 import { db } from "@/db";
 import { reservations } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { ReservationInput } from "@/lib/validations/reservation";
 
-export async function getAllReservations() {
+export async function getAllReservations(tenantId: string) {
   return db
     .select()
     .from(reservations)
-    .where(isNull(reservations.deletedAt))
+    .where(and(eq(reservations.tenantId, tenantId), isNull(reservations.deletedAt)))
     .orderBy(reservations.date);
 }
 
-export async function createReservation(data: ReservationInput) {
+export async function createReservation(tenantId: string, data: ReservationInput) {
   const result = await db
     .insert(reservations)
     .values({
+      tenantId,
       customerId: data.customerId,
       customerName: data.customerName,
       date: data.date,
@@ -28,7 +29,7 @@ export async function createReservation(data: ReservationInput) {
   return result[0];
 }
 
-export async function updateReservation(id: number, data: ReservationInput) {
+export async function updateReservation(tenantId: string, id: number, data: ReservationInput) {
   const result = await db
     .update(reservations)
     .set({
@@ -41,11 +42,14 @@ export async function updateReservation(id: number, data: ReservationInput) {
       status: data.status,
       notes: data.notes,
     })
-    .where(eq(reservations.id, id))
+    .where(and(eq(reservations.tenantId, tenantId), eq(reservations.id, id)))
     .returning();
   return result[0];
 }
 
-export async function softDeleteReservation(id: number) {
-  await db.update(reservations).set({ deletedAt: new Date() }).where(eq(reservations.id, id));
+export async function softDeleteReservation(tenantId: string, id: number) {
+  await db
+    .update(reservations)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(reservations.tenantId, tenantId), eq(reservations.id, id)));
 }

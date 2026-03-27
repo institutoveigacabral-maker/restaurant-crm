@@ -1,25 +1,30 @@
 import { db } from "@/db";
 import { customers } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { CustomerInput, CustomerUpdateInput } from "@/lib/validations/customer";
 
-export async function getAllCustomers() {
+export async function getAllCustomers(tenantId: string) {
   return db
     .select()
     .from(customers)
-    .where(isNull(customers.deletedAt))
+    .where(and(eq(customers.tenantId, tenantId), isNull(customers.deletedAt)))
     .orderBy(customers.createdAt);
 }
 
-export async function getCustomerById(id: number) {
-  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+export async function getCustomerById(tenantId: string, id: number) {
+  const result = await db
+    .select()
+    .from(customers)
+    .where(and(eq(customers.tenantId, tenantId), eq(customers.id, id)))
+    .limit(1);
   return result[0] ?? null;
 }
 
-export async function createCustomer(data: CustomerInput) {
+export async function createCustomer(tenantId: string, data: CustomerInput) {
   const result = await db
     .insert(customers)
     .values({
+      tenantId,
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -31,7 +36,7 @@ export async function createCustomer(data: CustomerInput) {
   return result[0];
 }
 
-export async function updateCustomer(data: CustomerUpdateInput) {
+export async function updateCustomer(tenantId: string, data: CustomerUpdateInput) {
   const result = await db
     .update(customers)
     .set({
@@ -41,11 +46,14 @@ export async function updateCustomer(data: CustomerUpdateInput) {
       notes: data.notes,
       tags: data.tags,
     })
-    .where(eq(customers.id, data.id))
+    .where(and(eq(customers.tenantId, tenantId), eq(customers.id, data.id)))
     .returning();
   return result[0];
 }
 
-export async function softDeleteCustomer(id: number) {
-  await db.update(customers).set({ deletedAt: new Date() }).where(eq(customers.id, id));
+export async function softDeleteCustomer(tenantId: string, id: number) {
+  await db
+    .update(customers)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(customers.tenantId, tenantId), eq(customers.id, id)));
 }

@@ -3,15 +3,23 @@ import { webhooks, webhookLogs } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
-export async function getAllWebhooks() {
-  return db.select().from(webhooks).orderBy(desc(webhooks.createdAt));
+export async function getAllWebhooks(tenantId: string) {
+  return db
+    .select()
+    .from(webhooks)
+    .where(eq(webhooks.tenantId, tenantId))
+    .orderBy(desc(webhooks.createdAt));
 }
 
-export async function createWebhook(data: { name: string; url: string; events: string[] }) {
+export async function createWebhook(
+  tenantId: string,
+  data: { name: string; url: string; events: string[] }
+) {
   const secret = randomBytes(32).toString("hex");
   const result = await db
     .insert(webhooks)
     .values({
+      tenantId,
       name: data.name,
       url: data.url,
       events: data.events,
@@ -22,6 +30,7 @@ export async function createWebhook(data: { name: string; url: string; events: s
 }
 
 export async function updateWebhook(
+  tenantId: string,
   id: number,
   data: {
     name?: string;
@@ -36,16 +45,27 @@ export async function updateWebhook(
   if (data.events !== undefined) values.events = data.events;
   if (data.active !== undefined) values.active = data.active;
 
-  const result = await db.update(webhooks).set(values).where(eq(webhooks.id, id)).returning();
+  const result = await db
+    .update(webhooks)
+    .set(values)
+    .where(and(eq(webhooks.tenantId, tenantId), eq(webhooks.id, id)))
+    .returning();
   return result[0];
 }
 
-export async function deleteWebhook(id: number) {
-  await db.delete(webhooks).where(eq(webhooks.id, id));
+export async function deleteWebhook(tenantId: string, id: number) {
+  await db.delete(webhooks).where(and(eq(webhooks.tenantId, tenantId), eq(webhooks.id, id)));
 }
 
-export async function triggerWebhook(event: string, payload: Record<string, unknown>) {
-  const activeWebhooks = await db.select().from(webhooks).where(eq(webhooks.active, true));
+export async function triggerWebhook(
+  tenantId: string,
+  event: string,
+  payload: Record<string, unknown>
+) {
+  const activeWebhooks = await db
+    .select()
+    .from(webhooks)
+    .where(and(eq(webhooks.tenantId, tenantId), eq(webhooks.active, true)));
 
   const matching = activeWebhooks.filter((w) => w.events?.includes(event));
 
@@ -75,6 +95,7 @@ export async function triggerWebhook(event: string, payload: Record<string, unkn
     }
 
     await db.insert(webhookLogs).values({
+      tenantId,
       webhookId: webhook.id,
       event,
       payload,
@@ -87,11 +108,11 @@ export async function triggerWebhook(event: string, payload: Record<string, unkn
   Promise.allSettled(promises);
 }
 
-export async function getWebhookLogs(webhookId: number, limit = 10) {
+export async function getWebhookLogs(tenantId: string, webhookId: number, limit = 10) {
   return db
     .select()
     .from(webhookLogs)
-    .where(and(eq(webhookLogs.webhookId, webhookId)))
+    .where(and(eq(webhookLogs.tenantId, tenantId), eq(webhookLogs.webhookId, webhookId)))
     .orderBy(desc(webhookLogs.createdAt))
     .limit(limit);
 }

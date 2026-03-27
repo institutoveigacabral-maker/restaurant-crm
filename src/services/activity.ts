@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { activityLog } from "@/db/schema";
 
 export async function logActivity(
+  tenantId: string,
   userId: string | null,
   action: string,
   entity: string,
@@ -9,6 +10,7 @@ export async function logActivity(
   details?: Record<string, unknown>
 ) {
   await db.insert(activityLog).values({
+    tenantId,
     userId,
     action,
     entity,

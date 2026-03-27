@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { menuCategories, menuItems } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import {
   MenuCategoryInput,
   MenuCategoryUpdateInput,
@@ -10,14 +10,19 @@ import {
 
 // ── Categories ──────────────────────────────────────────────
 
-export async function getAllCategories() {
-  return db.select().from(menuCategories).orderBy(menuCategories.sortOrder);
+export async function getAllCategories(tenantId: string) {
+  return db
+    .select()
+    .from(menuCategories)
+    .where(eq(menuCategories.tenantId, tenantId))
+    .orderBy(menuCategories.sortOrder);
 }
 
-export async function createCategory(data: MenuCategoryInput) {
+export async function createCategory(tenantId: string, data: MenuCategoryInput) {
   const result = await db
     .insert(menuCategories)
     .values({
+      tenantId,
       name: data.name,
       description: data.description,
     })
@@ -25,32 +30,39 @@ export async function createCategory(data: MenuCategoryInput) {
   return result[0];
 }
 
-export async function updateCategory(data: MenuCategoryUpdateInput) {
+export async function updateCategory(tenantId: string, data: MenuCategoryUpdateInput) {
   const result = await db
     .update(menuCategories)
     .set({
       name: data.name,
       description: data.description,
     })
-    .where(eq(menuCategories.id, data.id))
+    .where(and(eq(menuCategories.tenantId, tenantId), eq(menuCategories.id, data.id)))
     .returning();
   return result[0];
 }
 
-export async function deleteCategory(id: number) {
-  await db.delete(menuCategories).where(eq(menuCategories.id, id));
+export async function deleteCategory(tenantId: string, id: number) {
+  await db
+    .delete(menuCategories)
+    .where(and(eq(menuCategories.tenantId, tenantId), eq(menuCategories.id, id)));
 }
 
 // ── Menu Items ──────────────────────────────────────────────
 
-export async function getAllMenuItems() {
-  return db.select().from(menuItems).where(isNull(menuItems.deletedAt)).orderBy(menuItems.name);
+export async function getAllMenuItems(tenantId: string) {
+  return db
+    .select()
+    .from(menuItems)
+    .where(and(eq(menuItems.tenantId, tenantId), isNull(menuItems.deletedAt)))
+    .orderBy(menuItems.name);
 }
 
-export async function createMenuItem(data: MenuItemInput) {
+export async function createMenuItem(tenantId: string, data: MenuItemInput) {
   const result = await db
     .insert(menuItems)
     .values({
+      tenantId,
       categoryId: data.categoryId,
       name: data.name,
       description: data.description,
@@ -61,7 +73,7 @@ export async function createMenuItem(data: MenuItemInput) {
   return result[0];
 }
 
-export async function updateMenuItem(data: MenuItemUpdateInput) {
+export async function updateMenuItem(tenantId: string, data: MenuItemUpdateInput) {
   const result = await db
     .update(menuItems)
     .set({
@@ -71,24 +83,31 @@ export async function updateMenuItem(data: MenuItemUpdateInput) {
       price: String(data.price),
       available: data.available,
     })
-    .where(eq(menuItems.id, data.id))
+    .where(and(eq(menuItems.tenantId, tenantId), eq(menuItems.id, data.id)))
     .returning();
   return result[0];
 }
 
-export async function softDeleteMenuItem(id: number) {
-  await db.update(menuItems).set({ deletedAt: new Date() }).where(eq(menuItems.id, id));
+export async function softDeleteMenuItem(tenantId: string, id: number) {
+  await db
+    .update(menuItems)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(menuItems.tenantId, tenantId), eq(menuItems.id, id)));
 }
 
-export async function toggleMenuItemAvailability(id: number) {
-  const item = await db.select().from(menuItems).where(eq(menuItems.id, id)).limit(1);
+export async function toggleMenuItemAvailability(tenantId: string, id: number) {
+  const item = await db
+    .select()
+    .from(menuItems)
+    .where(and(eq(menuItems.tenantId, tenantId), eq(menuItems.id, id)))
+    .limit(1);
 
   if (!item[0]) throw new Error("Item não encontrado");
 
   const result = await db
     .update(menuItems)
     .set({ available: !item[0].available })
-    .where(eq(menuItems.id, id))
+    .where(and(eq(menuItems.tenantId, tenantId), eq(menuItems.id, id)))
     .returning();
   return result[0];
 }

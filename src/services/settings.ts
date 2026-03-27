@@ -1,21 +1,26 @@
 import { db } from "@/db";
 import { restaurantSettings, featureFlags } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-export async function getSettings() {
-  const rows = await db.select().from(restaurantSettings).limit(1);
+export async function getSettings(tenantId: string) {
+  const rows = await db
+    .select()
+    .from(restaurantSettings)
+    .where(eq(restaurantSettings.tenantId, tenantId))
+    .limit(1);
 
   if (rows.length > 0) return rows[0];
 
   const created = await db
     .insert(restaurantSettings)
-    .values({ name: "Meu Restaurante" })
+    .values({ tenantId, name: "Meu Restaurante" })
     .returning();
 
   return created[0];
 }
 
 export async function updateSettings(
+  tenantId: string,
   id: number,
   data: Partial<{
     name: string;
@@ -54,23 +59,32 @@ export async function updateSettings(
   const result = await db
     .update(restaurantSettings)
     .set(values)
-    .where(eq(restaurantSettings.id, id))
+    .where(and(eq(restaurantSettings.tenantId, tenantId), eq(restaurantSettings.id, id)))
     .returning();
 
   return result[0];
 }
 
-export async function getFeatureFlags() {
-  return db.select().from(featureFlags);
+export async function getFeatureFlags(tenantId: string) {
+  return db.select().from(featureFlags).where(eq(featureFlags.tenantId, tenantId));
 }
 
-export async function getFeatureFlag(key: string) {
-  const rows = await db.select().from(featureFlags).where(eq(featureFlags.key, key)).limit(1);
+export async function getFeatureFlag(tenantId: string, key: string) {
+  const rows = await db
+    .select()
+    .from(featureFlags)
+    .where(and(eq(featureFlags.tenantId, tenantId), eq(featureFlags.key, key)))
+    .limit(1);
   return rows[0] ?? null;
 }
 
-export async function upsertFeatureFlag(key: string, enabled: boolean, description?: string) {
-  const existing = await getFeatureFlag(key);
+export async function upsertFeatureFlag(
+  tenantId: string,
+  key: string,
+  enabled: boolean,
+  description?: string
+) {
+  const existing = await getFeatureFlag(tenantId, key);
 
   if (existing) {
     const values: Record<string, unknown> = { enabled };
@@ -79,14 +93,14 @@ export async function upsertFeatureFlag(key: string, enabled: boolean, descripti
     const result = await db
       .update(featureFlags)
       .set(values)
-      .where(eq(featureFlags.key, key))
+      .where(and(eq(featureFlags.tenantId, tenantId), eq(featureFlags.key, key)))
       .returning();
     return result[0];
   }
 
   const result = await db
     .insert(featureFlags)
-    .values({ key, enabled, description: description ?? "" })
+    .values({ tenantId, key, enabled, description: description ?? "" })
     .returning();
   return result[0];
 }

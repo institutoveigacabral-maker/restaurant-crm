@@ -3,7 +3,7 @@ import { challenges, challengeParticipations } from "@/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { awardXp } from "./gamification";
 
-export async function getActiveChallenges(userId: string) {
+export async function getActiveChallenges(tenantId: string, userId: string) {
   const today = new Date().toISOString().split("T")[0];
 
   const activeChallenges = await db
@@ -11,6 +11,7 @@ export async function getActiveChallenges(userId: string) {
     .from(challenges)
     .where(
       and(
+        eq(challenges.tenantId, tenantId),
         eq(challenges.active, true),
         lte(challenges.startDate, today),
         gte(challenges.endDate, today)
@@ -21,7 +22,12 @@ export async function getActiveChallenges(userId: string) {
   const participations = await db
     .select()
     .from(challengeParticipations)
-    .where(eq(challengeParticipations.userId, userId));
+    .where(
+      and(
+        eq(challengeParticipations.tenantId, tenantId),
+        eq(challengeParticipations.userId, userId)
+      )
+    );
 
   const participationMap = new Map(participations.map((p) => [p.challengeId, p]));
 
@@ -37,12 +43,13 @@ export async function getActiveChallenges(userId: string) {
   });
 }
 
-export async function joinChallenge(userId: string, challengeId: number) {
+export async function joinChallenge(tenantId: string, userId: string, challengeId: number) {
   const existing = await db
     .select()
     .from(challengeParticipations)
     .where(
       and(
+        eq(challengeParticipations.tenantId, tenantId),
         eq(challengeParticipations.userId, userId),
         eq(challengeParticipations.challengeId, challengeId)
       )
@@ -56,6 +63,7 @@ export async function joinChallenge(userId: string, challengeId: number) {
   const result = await db
     .insert(challengeParticipations)
     .values({
+      tenantId,
       userId,
       challengeId,
       currentProgress: 0,
@@ -66,12 +74,18 @@ export async function joinChallenge(userId: string, challengeId: number) {
   return result[0];
 }
 
-export async function updateProgress(userId: string, challengeId: number, progress: number) {
+export async function updateProgress(
+  tenantId: string,
+  userId: string,
+  challengeId: number,
+  progress: number
+) {
   const participation = await db
     .select()
     .from(challengeParticipations)
     .where(
       and(
+        eq(challengeParticipations.tenantId, tenantId),
         eq(challengeParticipations.userId, userId),
         eq(challengeParticipations.challengeId, challengeId)
       )
@@ -85,7 +99,7 @@ export async function updateProgress(userId: string, challengeId: number, progre
   const challenge = await db
     .select()
     .from(challenges)
-    .where(eq(challenges.id, challengeId))
+    .where(and(eq(challenges.tenantId, tenantId), eq(challenges.id, challengeId)))
     .limit(1);
 
   if (!challenge[0]) return null;
@@ -107,6 +121,7 @@ export async function updateProgress(userId: string, challengeId: number, progre
     .set(updateData)
     .where(
       and(
+        eq(challengeParticipations.tenantId, tenantId),
         eq(challengeParticipations.userId, userId),
         eq(challengeParticipations.challengeId, challengeId)
       )
@@ -115,6 +130,7 @@ export async function updateProgress(userId: string, challengeId: number, progre
 
   if (isCompleted) {
     await awardXp(
+      tenantId,
       userId,
       challenge[0].xpReward ?? 200,
       "challenge",
@@ -137,10 +153,11 @@ interface CreateChallengeInput {
   endDate: string;
 }
 
-export async function createChallenge(data: CreateChallengeInput) {
+export async function createChallenge(tenantId: string, data: CreateChallengeInput) {
   const result = await db
     .insert(challenges)
     .values({
+      tenantId,
       title: data.title,
       description: data.description ?? null,
       type: data.type,
@@ -155,7 +172,7 @@ export async function createChallenge(data: CreateChallengeInput) {
   return result[0];
 }
 
-export async function getChallengeLeaderboard(challengeId: number) {
+export async function getChallengeLeaderboard(tenantId: string, challengeId: number) {
   return db
     .select({
       userId: challengeParticipations.userId,
@@ -164,14 +181,19 @@ export async function getChallengeLeaderboard(challengeId: number) {
       completedAt: challengeParticipations.completedAt,
     })
     .from(challengeParticipations)
-    .where(eq(challengeParticipations.challengeId, challengeId))
+    .where(
+      and(
+        eq(challengeParticipations.tenantId, tenantId),
+        eq(challengeParticipations.challengeId, challengeId)
+      )
+    )
     .orderBy(
       desc(challengeParticipations.completed),
       desc(challengeParticipations.currentProgress)
     );
 }
 
-export async function getUserChallenges(userId: string) {
+export async function getUserChallenges(tenantId: string, userId: string) {
   const today = new Date().toISOString().split("T")[0];
 
   return db
@@ -181,7 +203,13 @@ export async function getUserChallenges(userId: string) {
     })
     .from(challengeParticipations)
     .innerJoin(challenges, eq(challengeParticipations.challengeId, challenges.id))
-    .where(and(eq(challengeParticipations.userId, userId), gte(challenges.endDate, today)))
+    .where(
+      and(
+        eq(challengeParticipations.tenantId, tenantId),
+        eq(challengeParticipations.userId, userId),
+        gte(challenges.endDate, today)
+      )
+    )
     .orderBy(challenges.endDate);
 }
 

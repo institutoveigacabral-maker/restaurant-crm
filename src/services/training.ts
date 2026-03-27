@@ -32,8 +32,8 @@ interface UpdateCourseInput {
   sortOrder?: number;
 }
 
-export async function getCourses(category?: string, difficulty?: string) {
-  const conditions = [eq(courses.active, true)];
+export async function getCourses(tenantId: string, category?: string, difficulty?: string) {
+  const conditions = [eq(courses.tenantId, tenantId), eq(courses.active, true)];
 
   if (category) {
     conditions.push(eq(courses.category, category));
@@ -54,7 +54,7 @@ export async function getCourses(category?: string, difficulty?: string) {
     .orderBy(courses.sortOrder, courses.createdAt);
 }
 
-export async function getCourseById(id: number) {
+export async function getCourseById(tenantId: string, id: number) {
   const result = await db
     .select({
       course: courses,
@@ -62,17 +62,18 @@ export async function getCourseById(id: number) {
     })
     .from(courses)
     .leftJoin(courseEnrollments, eq(courses.id, courseEnrollments.courseId))
-    .where(eq(courses.id, id))
+    .where(and(eq(courses.tenantId, tenantId), eq(courses.id, id)))
     .groupBy(courses.id)
     .limit(1);
 
   return result[0] ?? null;
 }
 
-export async function createCourse(data: CreateCourseInput) {
+export async function createCourse(tenantId: string, data: CreateCourseInput) {
   const result = await db
     .insert(courses)
     .values({
+      tenantId,
       title: data.title,
       description: data.description ?? null,
       category: data.category,
@@ -90,23 +91,27 @@ export async function createCourse(data: CreateCourseInput) {
   return result[0];
 }
 
-export async function updateCourse(id: number, data: UpdateCourseInput) {
-  const result = await db.update(courses).set(data).where(eq(courses.id, id)).returning();
-
-  return result[0] ?? null;
-}
-
-export async function deleteCourse(id: number) {
+export async function updateCourse(tenantId: string, id: number, data: UpdateCourseInput) {
   const result = await db
     .update(courses)
-    .set({ active: false })
-    .where(eq(courses.id, id))
+    .set(data)
+    .where(and(eq(courses.tenantId, tenantId), eq(courses.id, id)))
     .returning();
 
   return result[0] ?? null;
 }
 
-export async function getEnrollments(userId: string) {
+export async function deleteCourse(tenantId: string, id: number) {
+  const result = await db
+    .update(courses)
+    .set({ active: false })
+    .where(and(eq(courses.tenantId, tenantId), eq(courses.id, id)))
+    .returning();
+
+  return result[0] ?? null;
+}
+
+export async function getEnrollments(tenantId: string, userId: string) {
   return db
     .select({
       enrollment: courseEnrollments,
@@ -114,15 +119,21 @@ export async function getEnrollments(userId: string) {
     })
     .from(courseEnrollments)
     .innerJoin(courses, eq(courseEnrollments.courseId, courses.id))
-    .where(eq(courseEnrollments.userId, userId))
+    .where(and(eq(courseEnrollments.tenantId, tenantId), eq(courseEnrollments.userId, userId)))
     .orderBy(desc(courseEnrollments.createdAt));
 }
 
-export async function enrollUser(userId: string, courseId: number) {
+export async function enrollUser(tenantId: string, userId: string, courseId: number) {
   const existing = await db
     .select()
     .from(courseEnrollments)
-    .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.courseId, courseId)))
+    .where(
+      and(
+        eq(courseEnrollments.tenantId, tenantId),
+        eq(courseEnrollments.userId, userId),
+        eq(courseEnrollments.courseId, courseId)
+      )
+    )
     .limit(1);
 
   if (existing[0]) {
@@ -132,6 +143,7 @@ export async function enrollUser(userId: string, courseId: number) {
   const result = await db
     .insert(courseEnrollments)
     .values({
+      tenantId,
       userId,
       courseId,
       status: "enrolled",
@@ -142,11 +154,16 @@ export async function enrollUser(userId: string, courseId: number) {
   return result[0];
 }
 
-export async function updateProgress(enrollmentId: number, progress: number, score?: number) {
+export async function updateProgress(
+  tenantId: string,
+  enrollmentId: number,
+  progress: number,
+  score?: number
+) {
   const enrollment = await db
     .select()
     .from(courseEnrollments)
-    .where(eq(courseEnrollments.id, enrollmentId))
+    .where(and(eq(courseEnrollments.tenantId, tenantId), eq(courseEnrollments.id, enrollmentId)))
     .limit(1);
 
   if (!enrollment[0]) return null;
@@ -171,7 +188,7 @@ export async function updateProgress(enrollmentId: number, progress: number, sco
   const result = await db
     .update(courseEnrollments)
     .set(updateData)
-    .where(eq(courseEnrollments.id, enrollmentId))
+    .where(and(eq(courseEnrollments.tenantId, tenantId), eq(courseEnrollments.id, enrollmentId)))
     .returning();
 
   if (isCompleted && result[0]) {
@@ -183,6 +200,7 @@ export async function updateProgress(enrollmentId: number, progress: number, sco
 
     if (course[0]) {
       await awardXp(
+        tenantId,
         enrollment[0].userId,
         course[0].xpReward ?? 50,
         "course",
@@ -195,17 +213,21 @@ export async function updateProgress(enrollmentId: number, progress: number, sco
   return result[0] ?? null;
 }
 
-export async function getCourseStats(courseId: number) {
+export async function getCourseStats(tenantId: string, courseId: number) {
   const enrollmentCount = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(courseEnrollments)
-    .where(eq(courseEnrollments.courseId, courseId));
+    .where(and(eq(courseEnrollments.tenantId, tenantId), eq(courseEnrollments.courseId, courseId)));
 
   const completedCount = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(courseEnrollments)
     .where(
-      and(eq(courseEnrollments.courseId, courseId), eq(courseEnrollments.status, "completed"))
+      and(
+        eq(courseEnrollments.tenantId, tenantId),
+        eq(courseEnrollments.courseId, courseId),
+        eq(courseEnrollments.status, "completed")
+      )
     );
 
   const avgScore = await db
@@ -214,7 +236,11 @@ export async function getCourseStats(courseId: number) {
     })
     .from(courseEnrollments)
     .where(
-      and(eq(courseEnrollments.courseId, courseId), eq(courseEnrollments.status, "completed"))
+      and(
+        eq(courseEnrollments.tenantId, tenantId),
+        eq(courseEnrollments.courseId, courseId),
+        eq(courseEnrollments.status, "completed")
+      )
     );
 
   const total = enrollmentCount[0]?.count ?? 0;

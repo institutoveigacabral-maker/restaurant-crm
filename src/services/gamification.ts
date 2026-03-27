@@ -29,11 +29,11 @@ export function calculateLevel(totalXp: number): number {
 
 // ── Profile ──────────────────────────────────────────────────
 
-export async function getOrCreateProfile(userId: string) {
+export async function getOrCreateProfile(tenantId: string, userId: string) {
   const existing = await db
     .select()
     .from(employeeProfiles)
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .limit(1);
 
   if (existing[0]) {
@@ -49,6 +49,7 @@ export async function getOrCreateProfile(userId: string) {
   const result = await db
     .insert(employeeProfiles)
     .values({
+      tenantId,
       userId,
       displayName: user[0]?.name ?? null,
     })
@@ -57,11 +58,11 @@ export async function getOrCreateProfile(userId: string) {
   return result[0];
 }
 
-export async function getProfile(userId: string) {
+export async function getProfile(tenantId: string, userId: string) {
   const profile = await db
     .select()
     .from(employeeProfiles)
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .limit(1);
 
   if (!profile[0]) {
@@ -78,12 +79,12 @@ export async function getProfile(userId: string) {
     })
     .from(employeeBadges)
     .innerJoin(badges, eq(employeeBadges.badgeId, badges.id))
-    .where(eq(employeeBadges.userId, userId));
+    .where(and(eq(employeeBadges.tenantId, tenantId), eq(employeeBadges.userId, userId)));
 
   const recentXp = await db
     .select()
     .from(xpTransactions)
-    .where(eq(xpTransactions.userId, userId))
+    .where(and(eq(xpTransactions.tenantId, tenantId), eq(xpTransactions.userId, userId)))
     .orderBy(desc(xpTransactions.createdAt))
     .limit(5);
 
@@ -97,15 +98,17 @@ export async function getProfile(userId: string) {
 // ── XP ───────────────────────────────────────────────────────
 
 export async function addXp(
+  tenantId: string,
   userId: string,
   amount: number,
   source: string,
   sourceId?: string,
   description?: string
 ) {
-  await getOrCreateProfile(userId);
+  await getOrCreateProfile(tenantId, userId);
 
   await db.insert(xpTransactions).values({
+    tenantId,
     userId,
     amount,
     source,
@@ -118,7 +121,7 @@ export async function addXp(
     .set({
       totalXp: sql`${employeeProfiles.totalXp} + ${amount}`,
     })
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .returning();
 
   if (result[0]) {
@@ -127,7 +130,7 @@ export async function addXp(
       await db
         .update(employeeProfiles)
         .set({ level: newLevel })
-        .where(eq(employeeProfiles.userId, userId));
+        .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)));
     }
   }
 
@@ -139,7 +142,7 @@ export const awardXp = addXp;
 
 // ── Leaderboard & History ────────────────────────────────────
 
-export async function getLeaderboard(limit = 10) {
+export async function getLeaderboard(tenantId: string, limit = 10) {
   return db
     .select({
       userId: employeeProfiles.userId,
@@ -152,26 +155,27 @@ export async function getLeaderboard(limit = 10) {
       coursesCompleted: employeeProfiles.coursesCompleted,
     })
     .from(employeeProfiles)
+    .where(eq(employeeProfiles.tenantId, tenantId))
     .orderBy(desc(employeeProfiles.totalXp))
     .limit(limit);
 }
 
-export async function getXpHistory(userId: string, limit = 20) {
+export async function getXpHistory(tenantId: string, userId: string, limit = 20) {
   return db
     .select()
     .from(xpTransactions)
-    .where(eq(xpTransactions.userId, userId))
+    .where(and(eq(xpTransactions.tenantId, tenantId), eq(xpTransactions.userId, userId)))
     .orderBy(desc(xpTransactions.createdAt))
     .limit(limit);
 }
 
 // ── Streak ───────────────────────────────────────────────────
 
-export async function updateStreak(userId: string) {
+export async function updateStreak(tenantId: string, userId: string) {
   const profile = await db
     .select()
     .from(employeeProfiles)
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .limit(1);
 
   if (!profile[0]) return null;
@@ -199,7 +203,7 @@ export async function updateStreak(userId: string) {
       streak: newStreak,
       lastActivityDate: today,
     })
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .returning();
 
   return result[0];
@@ -222,14 +226,18 @@ interface CreateBadgeInput {
   rarity?: string;
 }
 
-export async function getAllBadges() {
-  return db.select().from(badges).where(eq(badges.active, true));
+export async function getAllBadges(tenantId: string) {
+  return db
+    .select()
+    .from(badges)
+    .where(and(eq(badges.tenantId, tenantId), eq(badges.active, true)));
 }
 
-export async function createBadge(data: CreateBadgeInput) {
+export async function createBadge(tenantId: string, data: CreateBadgeInput) {
   const result = await db
     .insert(badges)
     .values({
+      tenantId,
       name: data.name,
       description: data.description ?? null,
       icon: data.icon,
@@ -243,14 +251,17 @@ export async function createBadge(data: CreateBadgeInput) {
   return result[0];
 }
 
-export async function getBadges(userId: string) {
-  const allBadges = await db.select().from(badges).where(eq(badges.active, true));
+export async function getBadges(tenantId: string, userId: string) {
+  const allBadges = await db
+    .select()
+    .from(badges)
+    .where(and(eq(badges.tenantId, tenantId), eq(badges.active, true)));
 
   const earnedBadgeIds = (
     await db
       .select({ badgeId: employeeBadges.badgeId })
       .from(employeeBadges)
-      .where(eq(employeeBadges.userId, userId))
+      .where(and(eq(employeeBadges.tenantId, tenantId), eq(employeeBadges.userId, userId)))
   ).map((b) => b.badgeId);
 
   return allBadges.map((badge) => ({
@@ -259,16 +270,28 @@ export async function getBadges(userId: string) {
   }));
 }
 
-export async function awardBadge(userId: string, badgeId: number) {
+export async function awardBadge(tenantId: string, userId: string, badgeId: number) {
   await db.insert(employeeBadges).values({
+    tenantId,
     userId,
     badgeId,
   });
 
-  const badge = await db.select().from(badges).where(eq(badges.id, badgeId)).limit(1);
+  const badge = await db
+    .select()
+    .from(badges)
+    .where(and(eq(badges.tenantId, tenantId), eq(badges.id, badgeId)))
+    .limit(1);
 
   if (badge[0]?.xpReward) {
-    await addXp(userId, badge[0].xpReward, "badge", String(badgeId), `Badge: ${badge[0].name}`);
+    await addXp(
+      tenantId,
+      userId,
+      badge[0].xpReward,
+      "badge",
+      String(badgeId),
+      `Badge: ${badge[0].name}`
+    );
   }
 
   await db
@@ -276,33 +299,42 @@ export async function awardBadge(userId: string, badgeId: number) {
     .set({
       badgesEarned: sql`${employeeProfiles.badgesEarned} + 1`,
     })
-    .where(eq(employeeProfiles.userId, userId));
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)));
 
   return badge[0] ?? null;
 }
 
-export async function checkAndAwardBadges(userId: string) {
+export async function checkAndAwardBadges(tenantId: string, userId: string) {
   const profile = await db
     .select()
     .from(employeeProfiles)
-    .where(eq(employeeProfiles.userId, userId))
+    .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)))
     .limit(1);
 
   if (!profile[0]) return [];
 
-  const allBadges = await db.select().from(badges).where(eq(badges.active, true));
+  const allBadges = await db
+    .select()
+    .from(badges)
+    .where(and(eq(badges.tenantId, tenantId), eq(badges.active, true)));
 
   const earnedBadgeIds = (
     await db
       .select({ badgeId: employeeBadges.badgeId })
       .from(employeeBadges)
-      .where(eq(employeeBadges.userId, userId))
+      .where(and(eq(employeeBadges.tenantId, tenantId), eq(employeeBadges.userId, userId)))
   ).map((b) => b.badgeId);
 
   const completedCourses = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(courseEnrollments)
-    .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.status, "completed")));
+    .where(
+      and(
+        eq(courseEnrollments.tenantId, tenantId),
+        eq(courseEnrollments.userId, userId),
+        eq(courseEnrollments.status, "completed")
+      )
+    );
 
   const mandatoryCourses = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -310,6 +342,7 @@ export async function checkAndAwardBadges(userId: string) {
     .innerJoin(courses, eq(courseEnrollments.courseId, courses.id))
     .where(
       and(
+        eq(courseEnrollments.tenantId, tenantId),
         eq(courseEnrollments.userId, userId),
         eq(courseEnrollments.status, "completed"),
         eq(courses.mandatory, true)
@@ -319,7 +352,7 @@ export async function checkAndAwardBadges(userId: string) {
   const totalMandatory = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(courses)
-    .where(eq(courses.mandatory, true));
+    .where(and(eq(courses.tenantId, tenantId), eq(courses.mandatory, true)));
 
   const stats = {
     courses_completed: completedCourses[0]?.count ?? 0,
@@ -361,12 +394,20 @@ export async function checkAndAwardBadges(userId: string) {
 
     if (earned) {
       await db.insert(employeeBadges).values({
+        tenantId,
         userId,
         badgeId: badge.id,
       });
 
       if (badge.xpReward) {
-        await addXp(userId, badge.xpReward, "badge", String(badge.id), `Badge: ${badge.name}`);
+        await addXp(
+          tenantId,
+          userId,
+          badge.xpReward,
+          "badge",
+          String(badge.id),
+          `Badge: ${badge.name}`
+        );
       }
 
       newlyAwarded.push(badge);
@@ -379,7 +420,7 @@ export async function checkAndAwardBadges(userId: string) {
       .set({
         badgesEarned: sql`${employeeProfiles.badgesEarned} + ${newlyAwarded.length}`,
       })
-      .where(eq(employeeProfiles.userId, userId));
+      .where(and(eq(employeeProfiles.tenantId, tenantId), eq(employeeProfiles.userId, userId)));
   }
 
   return newlyAwarded;
