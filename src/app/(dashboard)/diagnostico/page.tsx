@@ -89,7 +89,7 @@ export default function DiagnosticoPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       {d.overallScore !== null && (
-                        <p className="text-2xl font-bold">{d.overallScore}/24</p>
+                        <p className="text-2xl font-bold">{d.overallScore}/72</p>
                       )}
                       <p className="text-xs text-muted-foreground">
                         {new Date(d.createdAt).toLocaleDateString("pt-PT")}
