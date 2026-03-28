@@ -30,8 +30,8 @@ export default function DiagnosticoPage() {
 
   useEffect(() => {
     fetch("/api/diagnostics")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setDiagnostics)
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((res) => setDiagnostics(res.data || []))
       .catch(() => setDiagnostics([]))
       .finally(() => setLoading(false));
   }, []);

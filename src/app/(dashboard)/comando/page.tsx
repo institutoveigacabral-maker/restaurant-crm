@@ -32,8 +32,8 @@ export default function ComandoPage() {
 
   useEffect(() => {
     fetch("/api/sops")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setSops)
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((res) => setSops(res.data || []))
       .catch(() => setSops([]))
       .finally(() => setLoading(false));
   }, []);
