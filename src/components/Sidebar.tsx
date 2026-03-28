@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
+import TenantSwitcher from "@/components/TenantSwitcher";
 
 interface NavSection {
   title: string;
@@ -106,6 +107,13 @@ export default function Sidebar() {
             <NotificationBell />
           </div>
         </div>
+      </div>
+
+      <Separator />
+
+      {/* Tenant Switcher */}
+      <div className="px-3 py-2">
+        <TenantSwitcher />
       </div>
 
       <Separator />

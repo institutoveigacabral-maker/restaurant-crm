@@ -26,13 +26,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: updateData }) {
       if (user) {
         token.role = user.role;
         token.id = user.id;
         token.tenantId = user.tenantId;
         token.tenantSlug = user.tenantSlug;
         token.tenantName = user.tenantName;
+      }
+      // Tenant switch via useSession().update({ tenantId, tenantSlug, tenantName, role })
+      if (trigger === "update" && updateData) {
+        if (updateData.tenantId) token.tenantId = updateData.tenantId;
+        if (updateData.tenantSlug) token.tenantSlug = updateData.tenantSlug;
+        if (updateData.tenantName) token.tenantName = updateData.tenantName;
+        if (updateData.role) token.role = updateData.role;
       }
       return token;
     },
