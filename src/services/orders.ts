@@ -2,6 +2,32 @@ import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 
+export async function createOrder(
+  tenantId: string,
+  data: {
+    customerId?: number;
+    customerName: string;
+    items: unknown;
+    total: number;
+    status?: string;
+    date?: string;
+  }
+) {
+  const result = await db
+    .insert(orders)
+    .values({
+      tenantId,
+      customerId: data.customerId ?? null,
+      customerName: data.customerName,
+      items: data.items,
+      total: String(data.total),
+      status: data.status || "pending",
+      date: data.date || new Date().toISOString().split("T")[0],
+    })
+    .returning();
+  return result[0];
+}
+
 export async function getAllOrders(tenantId: string) {
   return db
     .select()
