@@ -5,9 +5,22 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { registerSchema } from "@/lib/validations/auth";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-utils";
+import { rateLimit, RateLimitError } from "@/lib/rate-limit";
+
+const registerLimiter = rateLimit({ interval: 60_000, uniqueTokenPerInterval: 100 });
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    try {
+      await registerLimiter.check(5, ip);
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        return errorResponse("Demasiadas tentativas. Tente novamente em 1 minuto.", 429);
+      }
+      throw e;
+    }
+
     const body = await req.json();
     const validated = registerSchema.parse(body);
 
