@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, TrendingUp, Receipt, FileText, Zap } from "lucide-react";
+import Link from "next/link";
+import {
+  Users,
+  CalendarDays,
+  TrendingUp,
+  Receipt,
+  FileText,
+  Zap,
+  Award,
+  Bot,
+  ArrowUpRight,
+  ClipboardList,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -29,6 +43,22 @@ interface ChartData {
   revenueByDay: { date: string; revenue: number }[];
   reservationsByDay: { date: string; count: number }[];
   topCustomers: { name: string; spent: number; visits: number }[];
+}
+
+interface MaturityData {
+  history: { date: string; overallScore: number; scores: Record<string, number> }[];
+  improvement: number;
+  improvementPercent: string;
+}
+
+interface RoiData {
+  sopsCreated: number;
+  badgesAwarded: number;
+  newCustomers: number;
+  automationsActive: number;
+  maturityStart: number;
+  maturityNow: number;
+  maturityDelta: number;
 }
 
 // ── Skeleton Components ──────────────────────────────────────
@@ -145,20 +175,31 @@ function formatDateShort(dateStr: string): string {
 export default function DashboardExecutivoPage() {
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [charts, setCharts] = useState<ChartData | null>(null);
+  const [maturity, setMaturity] = useState<MaturityData | null>(null);
+  const [roi, setRoi] = useState<RoiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [kpiRes, chartRes] = await Promise.all([
+        const [kpiRes, chartRes, maturityRes, roiRes] = await Promise.all([
           fetch("/api/analytics/kpis"),
           fetch("/api/analytics/charts"),
+          fetch("/api/analytics/maturity"),
+          fetch("/api/analytics/roi"),
         ]);
 
-        const [kpiJson, chartJson] = await Promise.all([kpiRes.json(), chartRes.json()]);
+        const [kpiJson, chartJson, maturityJson, roiJson] = await Promise.all([
+          kpiRes.json(),
+          chartRes.json(),
+          maturityRes.json(),
+          roiRes.json(),
+        ]);
 
         if (kpiJson.success) setKpis(kpiJson.data);
         if (chartJson.success) setCharts(chartJson.data);
+        if (maturityJson.success) setMaturity(maturityJson.data);
+        if (roiJson.success) setRoi(roiJson.data);
       } catch (err) {
         console.error("[Dashboard] Failed to load data", err);
       } finally {
@@ -186,6 +227,12 @@ export default function DashboardExecutivoPage() {
           <ChartSkeleton />
         </div>
         <TableSkeleton />
+        <ChartSkeleton />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <KpiSkeleton key={`roi-${i}`} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -365,6 +412,169 @@ export default function DashboardExecutivoPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Score de Maturidade ────────────────────────────────── */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Evolucao de Maturidade</h2>
+
+        {maturity && maturity.history.length > 1 ? (
+          <>
+            <Card>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="bg-indigo-500/10 p-2.5 rounded-xl">
+                  <ArrowUpRight className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Score de maturidade</p>
+                  <p className="text-lg font-bold">
+                    {maturity.history[0].overallScore.toFixed(1)} &rarr;{" "}
+                    {maturity.history[maturity.history.length - 1].overallScore.toFixed(1)}
+                    <span
+                      className={`ml-2 text-sm font-medium ${
+                        maturity.improvement >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      ({maturity.improvementPercent})
+                    </span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Evolucao do Score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={maturity.history}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDateShort}
+                      className="text-xs"
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis domain={[0, 10]} className="text-xs" tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value) => [Number(value).toFixed(2), "Score"]}
+                      labelFormatter={(label) => formatDateShort(String(label))}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="overallScore"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </>
+        ) : maturity && maturity.history.length === 1 ? (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">
+                Score atual:{" "}
+                <span className="font-bold text-foreground">
+                  {maturity.history[0].overallScore.toFixed(1)}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-xs mt-1">
+                Faca mais diagnosticos para acompanhar a evolucao.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">Nenhum diagnostico realizado.</p>
+              <Link
+                href="/diagnostico"
+                className="inline-block mt-3 text-sm font-medium text-primary hover:underline"
+              >
+                Faca o seu primeiro diagnostico
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* ── ROI da Consultoria ─────────────────────────────────── */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">ROI da Consultoria</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            icon={ClipboardList}
+            iconBg="bg-violet-500/10"
+            iconColor="text-violet-600"
+            value={String(roi?.sopsCreated ?? 0)}
+            label="SOPs documentados"
+          />
+          <KpiCard
+            icon={Award}
+            iconBg="bg-yellow-500/10"
+            iconColor="text-yellow-600"
+            value={String(roi?.badgesAwarded ?? 0)}
+            label="Badges conquistados"
+          />
+          <KpiCard
+            icon={Bot}
+            iconBg="bg-cyan-500/10"
+            iconColor="text-cyan-600"
+            value={String(roi?.automationsActive ?? 0)}
+            label="Automacoes ativas"
+          />
+          <KpiCard
+            icon={TrendingUp}
+            iconBg="bg-green-500/10"
+            iconColor="text-green-600"
+            value={
+              roi && roi.maturityDelta !== 0
+                ? `${roi.maturityDelta > 0 ? "+" : ""}${roi.maturityDelta.toFixed(1)}`
+                : "—"
+            }
+            label="Melhoria de maturidade"
+          />
+        </div>
+
+        {roi && (roi.maturityStart > 0 || roi.maturityNow > 0) ? (
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">
+                Desde o inicio da consultoria, a sua operacao melhorou{" "}
+                <span className="font-bold text-foreground">
+                  {roi.maturityStart > 0
+                    ? `${Math.round(((roi.maturityNow - roi.maturityStart) / roi.maturityStart) * 100)}%`
+                    : `${roi.maturityNow.toFixed(1)} pontos`}
+                </span>{" "}
+                com <span className="font-bold text-foreground">{roi.sopsCreated}</span> SOPs
+                documentados, <span className="font-bold text-foreground">{roi.badgesAwarded}</span>{" "}
+                badges conquistados e{" "}
+                <span className="font-bold text-foreground">{roi.newCustomers}</span> novos
+                clientes.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">
+                Complete o primeiro diagnostico para comecar a medir o ROI.
+              </p>
+              <Link
+                href="/diagnostico"
+                className="inline-block mt-3 text-sm font-medium text-primary hover:underline"
+              >
+                Iniciar diagnostico
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
