@@ -20,10 +20,10 @@ const baseTemplate = (content: string) => `
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>RestaurantCRM</h1></div>
+    <div class="header"><h1>Nexial</h1></div>
     <div class="content">${content}</div>
     <div class="footer">
-      <p>RestaurantCRM — Sistema de gestão para restaurantes</p>
+      <p>Nexial — Plataforma de inteligencia operacional</p>
     </div>
   </div>
 </body>

@@ -15,7 +15,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
   }
 
   const { data, error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM || "RestaurantCRM <noreply@restaurantcrm.com>",
+    from: process.env.EMAIL_FROM || "Nexial <noreply@nexial.pt>",
     to,
     subject,
     html,

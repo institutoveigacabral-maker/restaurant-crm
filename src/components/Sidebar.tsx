@@ -17,6 +17,8 @@ import {
   FileText,
   FolderOpen,
   ListChecks,
+  Trophy,
+  GraduationCap,
   Bot,
   Zap,
   TrendingUp,
@@ -56,6 +58,8 @@ const navSections: NavSection[] = [
       { href: "/crm/reservas", label: "Reservas", icon: CalendarDays },
       { href: "/crm/pedidos", label: "Pedidos", icon: UtensilsCrossed },
       { href: "/crm/cardapio", label: "Cardapio", icon: BookOpen },
+      { href: "/gamification", label: "Gamificacao", icon: Trophy },
+      { href: "/training", label: "Formacao", icon: GraduationCap },
     ],
   },
   {
