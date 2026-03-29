@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
 import TenantSwitcher from "@/components/TenantSwitcher";
+import { useTenantTheme } from "@/components/TenantThemeProvider";
 
 interface NavSection {
   title: string;
@@ -88,6 +89,7 @@ const roleLabel: Record<string, string> = {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const tenantTheme = useTenantTheme();
 
   const user = session?.user;
   const role = (user as Record<string, unknown>)?.role as string;
@@ -102,11 +104,23 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-card border-r border-border min-h-screen flex flex-col">
       {/* Brand */}
-      <div className="p-5">
+      <div
+        className="p-5 border-b-2"
+        style={{ borderBottomColor: "var(--tenant-primary, transparent)" }}
+      >
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <Brain className="w-6 h-6 text-primary" />
-          </div>
+          {tenantTheme.logo ? (
+            <div
+              className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-contain bg-center bg-no-repeat"
+              role="img"
+              aria-label={tenantTheme.name}
+              style={{ backgroundImage: `url(${tenantTheme.logo})` }}
+            />
+          ) : (
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <Brain className="w-6 h-6 text-primary" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold truncate">Nexial Rede Neural</h1>
             {tenantName && <p className="text-xs text-muted-foreground truncate">{tenantName}</p>}
