@@ -15,6 +15,8 @@ import {
   Settings,
   ClipboardCheck,
   FileText,
+  FolderOpen,
+  ListChecks,
   Bot,
   Zap,
   TrendingUp,
@@ -42,7 +44,9 @@ const navSections: NavSection[] = [
     title: "Consultoria",
     items: [
       { href: "/diagnostico", label: "Diagnostico", icon: ClipboardCheck },
-      { href: "/comando", label: "Comando", icon: FileText },
+      { href: "/comando", label: "SOPs", icon: FileText },
+      { href: "/comando/documentos", label: "Documentos", icon: FolderOpen },
+      { href: "/comando/onboarding", label: "Onboarding", icon: ListChecks },
     ],
   },
   {
