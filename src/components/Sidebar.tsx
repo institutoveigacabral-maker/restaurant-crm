@@ -23,6 +23,8 @@ import {
   Zap,
   TrendingUp,
   Brain,
+  ShieldCheck,
+  HelpCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +43,10 @@ interface NavSection {
 const navSections: NavSection[] = [
   {
     title: "Plataforma",
-    items: [{ href: "/", label: "Hub", icon: LayoutDashboard }],
+    items: [
+      { href: "/", label: "Hub", icon: LayoutDashboard },
+      { href: "/ajuda", label: "Ajuda", icon: HelpCircle },
+    ],
   },
   {
     title: "Consultoria",
@@ -142,34 +147,42 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 overflow-y-auto">
-        {navSections.map((section) => (
-          <div key={section.title} className="mb-4">
-            <p className="px-3 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              {section.title}
-            </p>
-            <ul className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive =
-                  pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {navSections.map((section) => {
+          // Inject Admin link in "Plataforma" section for owners
+          const items =
+            section.title === "Plataforma" && role === "owner"
+              ? [...section.items, { href: "/admin", label: "Admin", icon: ShieldCheck }]
+              : section.items;
+
+          return (
+            <div key={section.title} className="mb-4">
+              <p className="px-3 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {section.title}
+              </p>
+              <ul className="space-y-0.5">
+                {items.map((item) => {
+                  const isActive =
+                    pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground font-medium"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
 
         {/* Settings */}
         <div className="mt-2 pt-2 border-t border-border">
