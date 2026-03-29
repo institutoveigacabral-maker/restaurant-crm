@@ -2,7 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Search, Edit2, Trash2, Phone, Mail, Users } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Phone,
+  Mail,
+  Users,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Customer } from "@/types";
 import CustomerModal from "@/components/CustomerModal";
@@ -29,6 +40,8 @@ export default function CrmClientesPage() {
   const [filterTag, setFilterTag] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
 
   const load = () => {
     fetchCustomers()
@@ -51,6 +64,30 @@ export default function CrmClientesPage() {
     const matchesTag = filterTag === "all" || c.tags.includes(filterTag);
     return matchesSearch && matchesTag;
   });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  function exportCSV() {
+    const headers = ["Nome", "Email", "Telefone", "Visitas", "Total Gasto", "Tags", "Notas"];
+    const rows = filtered.map((c) => [
+      c.name,
+      c.email,
+      c.phone,
+      String(c.visits),
+      String(c.totalSpent),
+      c.tags.join("; "),
+      c.notes || "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `clientes-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const handleSave = async (data: Omit<Customer, "id" | "createdAt">) => {
     try {
@@ -98,15 +135,21 @@ export default function CrmClientesPage() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">{customers.length} clientes cadastrados</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingCustomer(null);
-            setModalOpen(true);
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingCustomer(null);
+              setModalOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -163,7 +206,10 @@ export default function CrmClientesPage() {
           <Input
             placeholder="Buscar por nome, email ou telefone..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
             className="pl-9"
           />
         </div>
@@ -184,7 +230,7 @@ export default function CrmClientesPage() {
 
       {/* Customer Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((customer) => {
+        {paginated.map((customer) => {
           const initials = customer.name
             .split(" ")
             .map((n) => n[0])
@@ -285,6 +331,34 @@ export default function CrmClientesPage() {
 
       {filtered.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">Nenhum cliente encontrado.</div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filtered.length)} de{" "}
+            {filtered.length}
+          </p>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {modalOpen && (
