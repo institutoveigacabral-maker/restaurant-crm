@@ -1,7 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Eye, UtensilsCrossed, DollarSign, Clock } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Eye,
+  UtensilsCrossed,
+  DollarSign,
+  Clock,
+  ChefHat,
+  CheckCircle,
+  Wallet,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Order } from "@/types";
 import { fetchOrders } from "@/lib/api";
@@ -20,12 +31,80 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CardSkeleton } from "@/components/LoadingSkeleton";
 
+type OrderStatus = Order["status"];
+
+const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
+  preparing: "served",
+  served: "paid",
+  paid: null,
+  cancelled: null,
+};
+
+const STATUS_CONFIG: Record<
+  OrderStatus,
+  {
+    label: string;
+    badgeClass: string;
+    nextLabel: string | null;
+    nextIcon: typeof ChefHat | null;
+  }
+> = {
+  preparing: {
+    label: "Preparando",
+    badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
+    nextLabel: "Servido",
+    nextIcon: CheckCircle,
+  },
+  served: {
+    label: "Servido",
+    badgeClass: "bg-green-100 text-green-800 border-green-200",
+    nextLabel: "Pago",
+    nextIcon: Wallet,
+  },
+  paid: {
+    label: "Pago",
+    badgeClass: "bg-gray-100 text-gray-600 border-gray-200",
+    nextLabel: null,
+    nextIcon: null,
+  },
+  cancelled: {
+    label: "Cancelado",
+    badgeClass: "bg-red-100 text-red-800 border-red-200",
+    nextLabel: null,
+    nextIcon: null,
+  },
+};
+
+function formatElapsed(dateStr: string): string {
+  const orderDate = new Date(dateStr + "T12:00:00");
+  const now = new Date();
+  const diffMs = now.getTime() - orderDate.getTime();
+
+  if (diffMs < 0) return "hoje";
+
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays}d atras`;
+  if (diffHours > 0) return `${diffHours}h atras`;
+  if (diffMinutes > 0) return `${diffMinutes}min atras`;
+  return "agora";
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 export default function CrmPedidosPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders()
@@ -34,18 +113,54 @@ export default function CrmPedidosPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const updateStatus = useCallback(async (orderId: string, newStatus: OrderStatus) => {
+    setUpdatingId(orderId);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, status: newStatus }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Erro ao atualizar status");
+      }
+
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o)));
+
+      // Atualizar dialog se aberto
+      setSelectedOrder((prev) =>
+        prev && prev.id === orderId ? { ...prev, status: newStatus } : prev
+      );
+
+      toast.success(`Pedido #${orderId} marcado como ${STATUS_CONFIG[newStatus].label}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar status");
+    } finally {
+      setUpdatingId(null);
+      setConfirmCancel(null);
+    }
+  }, []);
+
+  const handleCancel = useCallback(
+    (orderId: string) => {
+      if (confirmCancel === orderId) {
+        updateStatus(orderId, "cancelled");
+      } else {
+        setConfirmCancel(orderId);
+        // Reset confirmacao apos 3s
+        setTimeout(() => setConfirmCancel((prev) => (prev === orderId ? null : prev)), 3000);
+      }
+    },
+    [confirmCancel, updateStatus]
+  );
+
   const statusLabel: Record<string, string> = {
     preparing: "Preparando",
     served: "Servido",
     paid: "Pago",
     cancelled: "Cancelado",
-  };
-
-  const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-    preparing: "outline",
-    served: "secondary",
-    paid: "default",
-    cancelled: "destructive",
   };
 
   const filtered = orders.filter((o) => {
@@ -69,6 +184,58 @@ export default function CrmPedidosPage() {
             <CardSkeleton key={i} />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  function renderStatusBadge(status: OrderStatus) {
+    const config = STATUS_CONFIG[status];
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.badgeClass}`}
+      >
+        {config.label}
+      </span>
+    );
+  }
+
+  function renderActionButtons(order: Order) {
+    const isUpdating = updatingId === order.id;
+    const nextStatus = STATUS_FLOW[order.status];
+    const config = STATUS_CONFIG[order.status];
+    const isCancelled = order.status === "cancelled";
+    const isPaid = order.status === "paid";
+
+    if (isCancelled || isPaid) return null;
+
+    return (
+      <div className="flex items-center gap-2 mt-3">
+        {nextStatus && config.nextIcon && (
+          <Button
+            size="sm"
+            variant="default"
+            disabled={isUpdating}
+            onClick={() => updateStatus(order.id, nextStatus)}
+            className="flex-1"
+          >
+            {isUpdating ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <config.nextIcon className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {config.nextLabel}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant={confirmCancel === order.id ? "destructive" : "outline"}
+          disabled={isUpdating}
+          onClick={() => handleCancel(order.id)}
+          className="shrink-0"
+        >
+          <XCircle className="w-3.5 h-3.5 mr-1" />
+          {confirmCancel === order.id ? "Confirmar" : "Cancelar"}
+        </Button>
       </div>
     );
   }
@@ -169,7 +336,13 @@ export default function CrmPedidosPage() {
                   <CardTitle className="text-base">Pedido #{order.id}</CardTitle>
                   <p className="text-sm text-muted-foreground">{order.customerName}</p>
                 </div>
-                <Badge variant={statusVariant[order.status]}>{statusLabel[order.status]}</Badge>
+                {renderStatusBadge(order.status)}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <Clock className="w-3 h-3" />
+                <span>{formatDate(order.date)}</span>
+                <span className="text-muted-foreground/60">|</span>
+                <span>{formatElapsed(order.date)}</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -201,6 +374,7 @@ export default function CrmPedidosPage() {
                   Detalhes
                 </Button>
               </div>
+              {renderActionButtons(order)}
             </CardContent>
           </Card>
         ))}
@@ -223,13 +397,17 @@ export default function CrmPedidosPage() {
                   <p className="text-sm text-muted-foreground">Cliente</p>
                   <p className="font-medium">{selectedOrder.customerName}</p>
                 </div>
-                <Badge variant={statusVariant[selectedOrder.status]}>
-                  {statusLabel[selectedOrder.status]}
-                </Badge>
+                {renderStatusBadge(selectedOrder.status)}
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Data</p>
-                <p className="font-medium">{selectedOrder.date}</p>
+              <div className="flex gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground">Data</p>
+                  <p className="font-medium">{formatDate(selectedOrder.date)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tempo</p>
+                  <p className="font-medium">{formatElapsed(selectedOrder.date)}</p>
+                </div>
               </div>
               <Separator />
               <div className="space-y-2">
@@ -255,6 +433,7 @@ export default function CrmPedidosPage() {
                   R$ {selectedOrder.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </span>
               </div>
+              {renderActionButtons(selectedOrder)}
             </div>
           )}
         </DialogContent>
