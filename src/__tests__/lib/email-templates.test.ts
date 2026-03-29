@@ -38,7 +38,7 @@ describe("reservationConfirmationEmail", () => {
     const html = reservationConfirmationEmail(data);
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("</html>");
-    expect(html).toContain("RestaurantCRM");
+    expect(html).toContain("Nexial");
   });
 });
 
