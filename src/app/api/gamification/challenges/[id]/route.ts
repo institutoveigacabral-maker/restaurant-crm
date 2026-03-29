@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { joinChallenge, updateProgress as updateChallengeProgress } from "@/services/challenges";
+import { handleApiError } from "@/lib/api-utils";
+import { challengeProgressSchema } from "@/lib/validations/gamification";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,20 +40,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id: challengeId } = await params;
     const body = await req.json();
-    const { userId, progress } = body as { userId: string; progress: number };
+    const validated = challengeProgressSchema.parse(body);
 
-    const effectiveUserId = userId || session.user.id!;
+    const effectiveUserId = validated.userId || session.user.id!;
     const result = await updateChallengeProgress(
       tenantId,
       effectiveUserId,
       Number(challengeId),
-      progress
+      validated.progress
     );
     return NextResponse.json({ success: true, data: result });
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Erro" },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }

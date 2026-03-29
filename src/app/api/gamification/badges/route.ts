@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getBadges, awardBadge } from "@/services/gamification";
+import { handleApiError } from "@/lib/api-utils";
+import { badgeAwardSchema } from "@/lib/validations/gamification";
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,14 +38,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No tenant" }, { status: 400 });
 
     const body = await req.json();
-    const { userId, badgeId } = body as { userId: string; badgeId: string };
+    const validated = badgeAwardSchema.parse(body);
 
-    const result = await awardBadge(tenantId, userId, Number(badgeId));
+    const result = await awardBadge(tenantId, validated.userId, validated.badgeId);
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Erro" },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getCourseById, updateCourse, deleteCourse } from "@/services/training";
+import { handleApiError } from "@/lib/api-utils";
+import { courseUpdateSchema } from "@/lib/validations/training";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -35,13 +37,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await req.json();
-    const result = await updateCourse(tenantId, Number(id), body);
+    const validated = courseUpdateSchema.parse(body);
+    const result = await updateCourse(tenantId, Number(id), validated);
     return NextResponse.json({ success: true, data: result });
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Erro" },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }
 

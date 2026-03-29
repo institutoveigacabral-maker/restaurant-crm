@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getCourses, createCourse } from "@/services/training";
+import { handleApiError } from "@/lib/api-utils";
+import { courseCreateSchema } from "@/lib/validations/training";
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,12 +39,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No tenant" }, { status: 400 });
 
     const body = await req.json();
-    const result = await createCourse(tenantId, body);
+    const validated = courseCreateSchema.parse(body);
+    const result = await createCourse(tenantId, validated);
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : "Erro" },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }
