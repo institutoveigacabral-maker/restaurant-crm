@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit2, Trash2, Clock, Users as UsersIcon, CalendarDays } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Clock,
+  Users as UsersIcon,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Customer, Reservation } from "@/types";
 import ReservationModal from "@/components/ReservationModal";
@@ -143,6 +153,137 @@ function ReservationTable({
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+const HOURS = [
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
+];
+
+function WeekCalendar({
+  reservations,
+  onEdit,
+}: {
+  reservations: Reservation[];
+  onEdit: (r: Reservation) => void;
+}) {
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const startOfWeek = new Date();
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1 + weekOffset * 7);
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  function getReservationsForSlot(date: Date, hour: string) {
+    const dateStr = date.toISOString().split("T")[0];
+    return reservations.filter((r) => r.date === dateStr && r.time === hour);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Button variant="outline" size="sm" onClick={() => setWeekOffset(weekOffset - 1)}>
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-sm font-medium">
+          {days[0].toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })} —{" "}
+          {days[6].toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
+        </span>
+        <div className="flex gap-1">
+          {weekOffset !== 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)}>
+              Hoje
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setWeekOffset(weekOffset + 1)}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          {/* Header */}
+          <div className="grid grid-cols-8 gap-px bg-border rounded-t-lg overflow-hidden">
+            <div className="bg-muted p-2 text-xs font-medium text-muted-foreground">Horario</div>
+            {days.map((d, i) => {
+              const isToday = d.toISOString().split("T")[0] === todayStr;
+              return (
+                <div
+                  key={i}
+                  className={`p-2 text-center text-xs font-medium ${isToday ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+                >
+                  <div>{dayNames[i]}</div>
+                  <div className="text-lg font-bold">{d.getDate()}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Rows */}
+          {HOURS.map((hour) => (
+            <div key={hour} className="grid grid-cols-8 gap-px bg-border">
+              <div className="bg-card p-2 text-xs text-muted-foreground font-mono">{hour}</div>
+              {days.map((d, i) => {
+                const slots = getReservationsForSlot(d, hour);
+                return (
+                  <div key={i} className="bg-card p-1 min-h-[40px]">
+                    {slots.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => onEdit(r)}
+                        className={`w-full text-left text-xs p-1 rounded mb-0.5 truncate cursor-pointer ${
+                          r.status === "confirmed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : r.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                              : r.status === "cancelled"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {r.customerName} ({r.guests}p)
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-green-200" /> Confirmada
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-yellow-200" /> Pendente
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-red-200" /> Cancelada
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -301,6 +442,7 @@ export default function CrmReservasPage() {
           <TabsTrigger value="all">Todas</TabsTrigger>
           <TabsTrigger value="today">Hoje ({todayReservations.length})</TabsTrigger>
           <TabsTrigger value="upcoming">Proximas ({upcomingReservations.length})</TabsTrigger>
+          <TabsTrigger value="calendar">Calendario</TabsTrigger>
         </TabsList>
 
         <div className="flex gap-3 mt-4 flex-wrap">
@@ -368,6 +510,14 @@ export default function CrmReservasPage() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-4">
+          <Card>
+            <CardContent className="p-4">
+              <WeekCalendar reservations={reservations} onEdit={handleEdit} />
             </CardContent>
           </Card>
         </TabsContent>
