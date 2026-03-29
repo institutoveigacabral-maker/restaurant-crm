@@ -48,6 +48,17 @@ export async function POST(req: Request) {
           .join("\n\n")
       : "Nenhum SOP disponivel para este departamento.";
 
+  const departmentInstructions: Record<string, string> = {
+    marketing: `Alem de consultar SOPs, voce ajuda a:
+- Gerar textos para posts em redes sociais (Instagram, Facebook)
+- Redigir respostas a avaliacoes online (Google, TripAdvisor)
+- Criar descricoes de pratos para o menu digital
+- Sugerir campanhas e promocoes sazonais
+Sempre adapte o tom ao estilo do restaurante.`,
+  };
+
+  const extraInstructions = departmentInstructions[department] || "";
+
   const systemPrompt = `Voce e o assistente operacional do departamento "${department}" do restaurante "${tenantName}".
 
 ## Base de Conhecimento (SOPs)
@@ -59,7 +70,8 @@ ${sopBlock}
 - Seja direto e pratico.
 - Se a pergunta nao estiver coberta pelos SOPs, diga isso e ofereça orientacao geral.
 - Responda em portugues.
-- Nao invente procedimentos — se nao ha SOP sobre o tema, informe.`;
+- Nao invente procedimentos — se nao ha SOP sobre o tema, informe.
+${extraInstructions}`;
 
   const result = streamText({
     model: anthropic("claude-sonnet-4-20250514"),

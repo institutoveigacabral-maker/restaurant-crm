@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
-import { Send, Trash2, Bot, User, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  Send,
+  Trash2,
+  Bot,
+  User,
+  AlertTriangle,
+  Loader2,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,6 +20,7 @@ const DEPARTMENTS = [
   { id: "atendimento", label: "Atendimento" },
   { id: "higiene", label: "Higiene" },
   { id: "rh", label: "RH" },
+  { id: "marketing", label: "Marketing" },
 ] as const;
 
 type Department = (typeof DEPARTMENTS)[number]["id"];
@@ -19,6 +29,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  feedback?: "up" | "down";
 }
 
 interface CloneChatProps {
@@ -199,12 +210,38 @@ export default function CloneChat({ initialDepartment, onClose }: CloneChatProps
                   <Bot className="w-3.5 h-3.5 text-primary" />
                 </div>
               )}
-              <div
-                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                }`}
-              >
-                {msg.content}
+              <div className="max-w-[80%]">
+                <div
+                  className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                    msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === "assistant" && msg.content && (
+                  <div className="flex gap-1 mt-1">
+                    <button
+                      onClick={() =>
+                        setMessages((prev) =>
+                          prev.map((m) => (m.id === msg.id ? { ...m, feedback: "up" } : m))
+                        )
+                      }
+                      className={`p-1 rounded hover:bg-muted ${msg.feedback === "up" ? "text-green-600" : "text-muted-foreground"}`}
+                    >
+                      <ThumbsUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setMessages((prev) =>
+                          prev.map((m) => (m.id === msg.id ? { ...m, feedback: "down" } : m))
+                        )
+                      }
+                      className={`p-1 rounded hover:bg-muted ${msg.feedback === "down" ? "text-red-600" : "text-muted-foreground"}`}
+                    >
+                      <ThumbsDown className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
               {msg.role === "user" && (
                 <div className="bg-muted rounded-full p-1.5 h-fit mt-0.5">
