@@ -187,6 +187,8 @@ interface RawMenuItem {
   price: string;
   available: boolean;
   image: string | null;
+  allergens: string[] | null;
+  ingredients: string | null;
 }
 
 function mapCategory(c: RawMenuCategory): MenuCategory {
@@ -207,6 +209,8 @@ function mapMenuItem(m: RawMenuItem): MenuItem {
     price: Number(m.price),
     available: m.available ?? true,
     image: m.image,
+    allergens: Array.isArray(m.allergens) ? m.allergens : [],
+    ingredients: m.ingredients ?? "",
   };
 }
 
@@ -236,6 +240,8 @@ export async function createMenuItem(data: {
   description?: string;
   price: number;
   available?: boolean;
+  allergens?: string[];
+  ingredients?: string;
 }) {
   const result = await apiFetch(`${base}/menu/items`, {
     method: "POST",
@@ -253,6 +259,8 @@ export async function updateMenuItem(data: {
   description?: string;
   price: number;
   available?: boolean;
+  allergens?: string[];
+  ingredients?: string;
 }) {
   const result = await apiFetch(`${base}/menu/items`, {
     method: "PUT",

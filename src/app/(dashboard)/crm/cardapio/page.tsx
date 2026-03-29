@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { MenuCategory, MenuItem } from "@/types";
+import { ALLERGEN_OPTIONS } from "@/lib/validations/menu";
 import {
   fetchMenuCategories,
   fetchMenuItems,
@@ -45,6 +46,8 @@ export default function CrmCardapioPage() {
     description: "",
     price: "",
     available: true,
+    allergens: [] as string[],
+    ingredients: "",
   });
 
   // Category dialog state
@@ -85,6 +88,8 @@ export default function CrmCardapioPage() {
       description: "",
       price: "",
       available: true,
+      allergens: [],
+      ingredients: "",
     });
     setItemDialogOpen(true);
   };
@@ -97,6 +102,8 @@ export default function CrmCardapioPage() {
       description: item.description,
       price: String(item.price),
       available: item.available,
+      allergens: item.allergens ?? [],
+      ingredients: item.ingredients ?? "",
     });
     setItemDialogOpen(true);
   };
@@ -116,6 +123,8 @@ export default function CrmCardapioPage() {
           description: itemForm.description,
           price: Number(itemForm.price),
           available: itemForm.available,
+          allergens: itemForm.allergens,
+          ingredients: itemForm.ingredients,
         });
       } else {
         await createMenuItem({
@@ -124,6 +133,8 @@ export default function CrmCardapioPage() {
           description: itemForm.description,
           price: Number(itemForm.price),
           available: itemForm.available,
+          allergens: itemForm.allergens,
+          ingredients: itemForm.ingredients,
         });
       }
       setItemDialogOpen(false);
@@ -271,6 +282,26 @@ export default function CrmCardapioPage() {
                     </p>
                   )}
 
+                  {item.allergens && item.allergens.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {item.allergens.map((allergen) => (
+                        <span
+                          key={allergen}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          {allergen}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {item.ingredients && (
+                    <p className="text-xs text-muted-foreground mb-2 italic line-clamp-2">
+                      Ingredientes: {item.ingredients}
+                    </p>
+                  )}
+
                   <div className="flex items-center justify-between pt-3 border-t">
                     <span className="text-lg font-bold text-foreground">
                       R$ {item.price.toFixed(2).replace(".", ",")}
@@ -346,6 +377,47 @@ export default function CrmCardapioPage() {
                 value={itemForm.price}
                 onChange={(e) => setItemForm((f) => ({ ...f, price: e.target.value }))}
                 placeholder="0,00"
+              />
+            </div>
+            <div>
+              <Label>Alergenos</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                {ALLERGEN_OPTIONS.map((allergen) => (
+                  <label
+                    key={allergen}
+                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={itemForm.allergens.includes(allergen)}
+                      onChange={(e) => {
+                        setItemForm((f) => ({
+                          ...f,
+                          allergens: e.target.checked
+                            ? [...f.allergens, allergen]
+                            : f.allergens.filter((a) => a !== allergen),
+                        }));
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <span>{allergen}</span>
+                  </label>
+                ))}
+              </div>
+              {itemForm.allergens.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {itemForm.allergens.length} alergeno(s) selecionado(s)
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="item-ingredients">Ingredientes</Label>
+              <Textarea
+                id="item-ingredients"
+                value={itemForm.ingredients}
+                onChange={(e) => setItemForm((f) => ({ ...f, ingredients: e.target.value }))}
+                placeholder="Ex: farinha de trigo, ovos, manteiga, acucar, leite..."
+                rows={2}
               />
             </div>
             <div className="flex items-center gap-2">

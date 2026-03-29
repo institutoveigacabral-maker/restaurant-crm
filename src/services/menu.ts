@@ -68,6 +68,8 @@ export async function createMenuItem(tenantId: string, data: MenuItemInput) {
       description: data.description,
       price: String(data.price),
       available: data.available,
+      allergens: data.allergens ?? [],
+      ingredients: data.ingredients ?? "",
     })
     .returning();
   return result[0];
@@ -82,6 +84,8 @@ export async function updateMenuItem(tenantId: string, data: MenuItemUpdateInput
       description: data.description,
       price: String(data.price),
       available: data.available,
+      allergens: data.allergens ?? [],
+      ingredients: data.ingredients ?? "",
     })
     .where(and(eq(menuItems.tenantId, tenantId), eq(menuItems.id, data.id)))
     .returning();

@@ -194,6 +194,8 @@ export const menuItems = pgTable("menu_items", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   available: boolean("available").default(true),
   image: text("image"),
+  allergens: jsonb("allergens").$type<string[]>().default([]),
+  ingredients: text("ingredients").default(""),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });

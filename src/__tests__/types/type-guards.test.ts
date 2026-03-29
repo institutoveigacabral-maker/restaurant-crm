@@ -106,6 +106,8 @@ describe("MenuItem type contract", () => {
       price: 89.9,
       available: true,
       image: null,
+      allergens: ["Gluten"],
+      ingredients: "picanha, sal grosso, alho",
     };
 
     expect(item).toHaveProperty("id");
@@ -114,6 +116,8 @@ describe("MenuItem type contract", () => {
     expect(item).toHaveProperty("price");
     expect(item).toHaveProperty("available");
     expect(item).toHaveProperty("image");
+    expect(item).toHaveProperty("allergens");
+    expect(item).toHaveProperty("ingredients");
   });
 
   it("image can be null", () => {
@@ -125,6 +129,8 @@ describe("MenuItem type contract", () => {
       price: 10,
       available: true,
       image: null,
+      allergens: [],
+      ingredients: "",
     };
     expect(item.image).toBeNull();
   });
@@ -138,6 +144,8 @@ describe("MenuItem type contract", () => {
       price: 10,
       available: true,
       image: "/images/test.jpg",
+      allergens: [],
+      ingredients: "",
     };
     expect(typeof item.image).toBe("string");
   });
