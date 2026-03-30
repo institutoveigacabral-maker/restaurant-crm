@@ -46,4 +46,6 @@ Antes de aprovar um PR, verifique:
 
 ## Setup de Desenvolvimento
 
+Stack: Next.js + Drizzle ORM
+
 Consulte o `README.md` do projeto para instrucoes de instalacao e configuracao do ambiente de desenvolvimento.
