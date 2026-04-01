@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-utils";
 import { createOrder, getAllOrders, updateOrderStatus, softDeleteOrder } from "@/services/orders";
 import { logActivity } from "@/services/activity";
+import { orderCreateSchema } from "@/lib/validations/order";
 
 export async function GET() {
   try {
@@ -28,18 +29,19 @@ export async function POST(req: NextRequest) {
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
-    const { customerId, customerName, items, total, status } = body;
-    if (!customerName) return errorResponse("customerName é obrigatório");
-    if (!items || !Array.isArray(items)) return errorResponse("items é obrigatório");
+    const validated = orderCreateSchema.parse(body);
 
     const order = await createOrder(tenantId, {
-      customerId,
-      customerName,
-      items,
-      total: Number(total),
-      status,
+      customerId: validated.customerId,
+      customerName: validated.customerName,
+      items: validated.items,
+      total: validated.total,
+      status: validated.status,
+      date: validated.date,
     });
-    await logActivity(tenantId, session.user.id!, "create", "order", order.id, { customerName });
+    await logActivity(tenantId, session.user.id!, "create", "order", order.id, {
+      customerName: validated.customerName,
+    });
 
     return successResponse(order, 201);
   } catch (error) {

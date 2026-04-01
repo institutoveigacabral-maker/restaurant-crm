@@ -4,11 +4,24 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { sops } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { rateLimit, RateLimitError } from "@/lib/rate-limit";
+
+const chatLimiter = rateLimit({ interval: 60_000, uniqueTokenPerInterval: 500 });
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return new Response("Nao autorizado", { status: 401 });
+  }
+
+  // Rate limit: 10 requests/min per user
+  try {
+    await chatLimiter.check(10, session.user.id!);
+  } catch (e) {
+    if (e instanceof RateLimitError) {
+      return new Response("Limite de requisicoes excedido. Tente em 1 minuto.", { status: 429 });
+    }
+    throw e;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
