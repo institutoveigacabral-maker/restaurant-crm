@@ -13,12 +13,40 @@ const securityHeaders = [
   },
 ];
 
+const allowedOrigins = [
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  "https://redenexial.com",
+  "https://*.redenexial.com",
+  "https://restaurant-crm-iota.vercel.app",
+].filter(Boolean);
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: allowedOrigins.join(", "),
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization, X-Tenant-Id",
+          },
+          {
+            key: "Access-Control-Max-Age",
+            value: "86400",
+          },
+        ],
       },
     ];
   },

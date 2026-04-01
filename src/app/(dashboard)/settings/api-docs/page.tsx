@@ -865,7 +865,7 @@ export default function ApiDocsPage() {
         <div>
           <h1 className="text-2xl font-bold">Documentação da API</h1>
           <p className="text-muted-foreground">
-            Referência completa de todos os endpoints disponíveis no RestaurantCRM
+            Referência completa de todos os endpoints disponíveis na Nexial Rede Neural
           </p>
         </div>
       </div>

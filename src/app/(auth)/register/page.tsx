@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChefHat, Loader2 } from "lucide-react";
+import { Brain, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -48,11 +48,11 @@ export default function RegisterPage() {
     <div className="w-full max-w-md mx-4">
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-orange-100 p-3 rounded-full mb-4">
-            <ChefHat className="w-8 h-8 text-orange-600" />
+          <div className="bg-primary/10 p-3 rounded-full mb-4">
+            <Brain className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Criar Conta</h1>
-          <p className="text-gray-500 text-sm mt-1">Registre-se no RestaurantCRM</p>
+          <p className="text-gray-500 text-sm mt-1">Registre-se na Nexial Rede Neural</p>
         </div>
 
         {error && (
