@@ -9,53 +9,55 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) return errorResponse("Nao autorizado", 401);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const role = (session.user as any).role as string;
-    if (role !== "owner") return errorResponse("Acesso restrito", 403);
+    if (session.user.role !== "owner") return errorResponse("Acesso restrito", 403);
 
-    // Global counts
-    const [tenantCount] = await db.select({ count: count() }).from(tenants);
-    const [userCount] = await db.select({ count: count() }).from(users);
-    const [customerCount] = await db
-      .select({ count: count() })
-      .from(customers)
-      .where(sql`${customers.deletedAt} IS NULL`);
-    const [sopCount] = await db.select({ count: count() }).from(sops);
-    const [diagnosticCount] = await db.select({ count: count() }).from(diagnostics);
-
-    // SOPs per tenant
-    const sopsPerTenant = await db
-      .select({
-        tenantId: sops.tenantId,
-        tenantName: tenants.name,
-        count: count(),
-      })
-      .from(sops)
-      .innerJoin(tenants, sql`${sops.tenantId} = ${tenants.id}`)
-      .groupBy(sops.tenantId, tenants.name);
-
-    // Diagnostics per tenant
-    const diagnosticsPerTenant = await db
-      .select({
-        tenantId: diagnostics.tenantId,
-        tenantName: tenants.name,
-        count: count(),
-      })
-      .from(diagnostics)
-      .innerJoin(tenants, sql`${diagnostics.tenantId} = ${tenants.id}`)
-      .groupBy(diagnostics.tenantId, tenants.name);
-
-    // Customers per tenant (for distribution chart)
-    const customersPerTenant = await db
-      .select({
-        tenantId: customers.tenantId,
-        tenantName: tenants.name,
-        count: count(),
-      })
-      .from(customers)
-      .innerJoin(tenants, sql`${customers.tenantId} = ${tenants.id}`)
-      .where(sql`${customers.deletedAt} IS NULL`)
-      .groupBy(customers.tenantId, tenants.name);
+    const [
+      [tenantCount],
+      [userCount],
+      [customerCount],
+      [sopCount],
+      [diagnosticCount],
+      sopsPerTenant,
+      diagnosticsPerTenant,
+      customersPerTenant,
+    ] = await Promise.all([
+      db.select({ count: count() }).from(tenants),
+      db.select({ count: count() }).from(users),
+      db
+        .select({ count: count() })
+        .from(customers)
+        .where(sql`${customers.deletedAt} IS NULL`),
+      db.select({ count: count() }).from(sops),
+      db.select({ count: count() }).from(diagnostics),
+      db
+        .select({
+          tenantId: sops.tenantId,
+          tenantName: tenants.name,
+          count: count(),
+        })
+        .from(sops)
+        .innerJoin(tenants, sql`${sops.tenantId} = ${tenants.id}`)
+        .groupBy(sops.tenantId, tenants.name),
+      db
+        .select({
+          tenantId: diagnostics.tenantId,
+          tenantName: tenants.name,
+          count: count(),
+        })
+        .from(diagnostics)
+        .innerJoin(tenants, sql`${diagnostics.tenantId} = ${tenants.id}`)
+        .groupBy(diagnostics.tenantId, tenants.name),
+      db
+        .select({
+          tenantId: customers.tenantId,
+          tenantName: tenants.name,
+          count: count(),
+        })
+        .from(customers)
+        .innerJoin(tenants, sql`${customers.tenantId} = ${tenants.id}`)
+        .where(sql`${customers.deletedAt} IS NULL`)
+        .groupBy(customers.tenantId, tenants.name),
+    ]);
 
     return successResponse({
       totals: {

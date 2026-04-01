@@ -9,46 +9,27 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) return errorResponse("Nao autorizado", 401);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const role = (session.user as any).role as string;
-    if (role !== "owner") return errorResponse("Acesso restrito", 403);
+    if (session.user.role !== "owner") return errorResponse("Acesso restrito", 403);
 
-    // All tenants
-    const allTenants = await db.select().from(tenants);
-
-    // Stats per tenant
-    const userCounts = await db
-      .select({
-        tenantId: tenantUsers.tenantId,
-        count: count(),
-      })
-      .from(tenantUsers)
-      .groupBy(tenantUsers.tenantId);
-
-    const customerCounts = await db
-      .select({
-        tenantId: customers.tenantId,
-        count: count(),
-      })
-      .from(customers)
-      .where(sql`${customers.deletedAt} IS NULL`)
-      .groupBy(customers.tenantId);
-
-    const sopCounts = await db
-      .select({
-        tenantId: sops.tenantId,
-        count: count(),
-      })
-      .from(sops)
-      .groupBy(sops.tenantId);
-
-    const diagnosticCounts = await db
-      .select({
-        tenantId: diagnostics.tenantId,
-        count: count(),
-      })
-      .from(diagnostics)
-      .groupBy(diagnostics.tenantId);
+    const [allTenants, userCounts, customerCounts, sopCounts, diagnosticCounts] = await Promise.all(
+      [
+        db.select().from(tenants),
+        db
+          .select({ tenantId: tenantUsers.tenantId, count: count() })
+          .from(tenantUsers)
+          .groupBy(tenantUsers.tenantId),
+        db
+          .select({ tenantId: customers.tenantId, count: count() })
+          .from(customers)
+          .where(sql`${customers.deletedAt} IS NULL`)
+          .groupBy(customers.tenantId),
+        db.select({ tenantId: sops.tenantId, count: count() }).from(sops).groupBy(sops.tenantId),
+        db
+          .select({ tenantId: diagnostics.tenantId, count: count() })
+          .from(diagnostics)
+          .groupBy(diagnostics.tenantId),
+      ]
+    );
 
     // Build lookup maps
     const usersMap = Object.fromEntries(userCounts.map((r) => [r.tenantId, r.count]));
