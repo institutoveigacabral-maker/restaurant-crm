@@ -9,6 +9,7 @@ import {
   softDeleteReservation,
 } from "@/services/reservations";
 import { logActivity } from "@/services/activity";
+import { onReservationConfirmed } from "@/services/automation-engine";
 
 export async function GET() {
   try {
@@ -63,6 +64,17 @@ export async function PUT(req: NextRequest) {
     await logActivity(tenantId, session.user.id!, "update", "reservation", validated.id, {
       status: validated.status,
     });
+
+    // Trigger automation: reservation confirmed
+    if (validated.status === "confirmed" && reservation) {
+      onReservationConfirmed(tenantId, {
+        customerName: reservation.customerName || validated.customerName,
+        date: reservation.date || validated.date,
+        time: reservation.time || validated.time,
+        guests: reservation.guests || validated.guests,
+        table: reservation.tableName || validated.table || "",
+      }).catch(() => {}); // fire-and-forget, nao bloqueia a response
+    }
 
     return successResponse(reservation);
   } catch (error) {

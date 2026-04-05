@@ -9,6 +9,7 @@ import {
   softDeleteCustomer,
 } from "@/services/customers";
 import { logActivity } from "@/services/activity";
+import { onCustomerCreated } from "@/services/automation-engine";
 
 export async function GET() {
   try {
@@ -40,6 +41,9 @@ export async function POST(req: NextRequest) {
     await logActivity(tenantId, session.user.id!, "create", "customer", customer.id, {
       name: validated.name,
     });
+
+    // Trigger automation: welcome email
+    onCustomerCreated(tenantId, { name: validated.name, email: validated.email }).catch(() => {});
 
     return successResponse(customer, 201);
   } catch (error) {
