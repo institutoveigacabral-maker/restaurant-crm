@@ -23,7 +23,8 @@ export async function POST(req: Request) {
       // Manual — usa session
       const session = await auth();
       if (!session?.user) return errorResponse("Nao autorizado", 401);
-      tenantId = session.user.tenantId || "";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tenantId = ((session.user as any).tenantId as string) || "";
       if (!tenantId) return errorResponse("No tenant", 400);
     }
 
