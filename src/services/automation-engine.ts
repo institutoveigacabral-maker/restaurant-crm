@@ -9,6 +9,7 @@ import {
   churnAlertEmail,
 } from "@/lib/email-templates";
 import { logExecution } from "@/services/automations";
+import { createNotification } from "@/services/notifications";
 
 type AutomationType =
   | "reservation_confirmed"
@@ -45,6 +46,13 @@ export async function onReservationConfirmed(
     });
   }
 
+  await createNotification(tenantId, {
+    title: "Reserva confirmada",
+    message: `${reservation.customerName} — ${reservation.date} as ${reservation.time} (${reservation.guests} pessoas)`,
+    type: "success",
+    link: "/crm/reservas",
+  });
+
   await logExecution(auto.id, tenantId, "success", { reservation }, { emailSent: !!customerEmail });
   return { executed: true, type: "reservation_confirmed" };
 }
@@ -66,6 +74,13 @@ export async function onCustomerCreated(
     to: customer.email,
     subject: "Bem-vindo!",
     html,
+  });
+
+  await createNotification(tenantId, {
+    title: "Novo cliente",
+    message: `${customer.name} foi adicionado ao CRM e recebeu email de boas-vindas`,
+    type: "info",
+    link: "/crm/clientes",
   });
 
   await logExecution(auto.id, tenantId, "success", { customer }, { emailSent: true });
@@ -113,6 +128,15 @@ export async function runInactiveCustomerCheck(tenantId: string) {
       html,
     });
     sent++;
+  }
+
+  if (sent > 0) {
+    await createNotification(tenantId, {
+      title: "Clientes inativos contactados",
+      message: `${sent} email(s) "sentimos sua falta" enviado(s) para clientes sem visita ha 30+ dias`,
+      type: "warning",
+      link: "/crm/clientes",
+    });
   }
 
   await logExecution(
@@ -173,6 +197,15 @@ export async function runReservationReminders(tenantId: string) {
       html,
     });
     sent++;
+  }
+
+  if (sent > 0) {
+    await createNotification(tenantId, {
+      title: "Lembretes de reserva enviados",
+      message: `${sent} lembrete(s) enviado(s) para reservas de amanha`,
+      type: "info",
+      link: "/crm/reservas",
+    });
   }
 
   await logExecution(
