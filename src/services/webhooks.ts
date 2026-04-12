@@ -1,7 +1,11 @@
 import { db } from "@/db";
 import { webhooks, webhookLogs } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { randomBytes, createHmac } from "crypto";
+
+function signPayload(payload: string, secret: string): string {
+  return createHmac("sha256", secret).update(payload).digest("hex");
+}
 
 export async function getAllWebhooks(tenantId: string) {
   return db
@@ -77,14 +81,19 @@ export async function triggerWebhook(
     let success = false;
 
     try {
+      const body = JSON.stringify(payload);
+      const signature = webhook.secret ? signPayload(body, webhook.secret) : "";
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+
       const res = await fetch(webhook.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Webhook-Secret": webhook.secret ?? "",
           "X-Webhook-Event": event,
+          "X-Webhook-Signature": `sha256=${signature}`,
+          "X-Webhook-Timestamp": timestamp,
         },
-        body: JSON.stringify(payload),
+        body,
       });
 
       statusCode = res.status;
