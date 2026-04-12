@@ -12,8 +12,8 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
@@ -55,8 +55,8 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);
@@ -83,8 +83,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
     if (!isAdmin(session as unknown as Record<string, unknown>))
       return errorResponse("Sem permissão", 403);

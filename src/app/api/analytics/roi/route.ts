@@ -8,8 +8,8 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Nao autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     // SOPs criados

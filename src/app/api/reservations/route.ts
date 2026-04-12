@@ -15,8 +15,8 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const data = await getAllReservations(tenantId);
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
@@ -53,8 +53,8 @@ export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const body = await req.json();
@@ -86,8 +86,8 @@ export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const { searchParams } = new URL(req.url);

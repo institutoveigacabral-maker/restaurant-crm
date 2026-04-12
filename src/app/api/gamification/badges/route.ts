@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user)
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId)
       return NextResponse.json({ success: false, error: "No tenant" }, { status: 400 });
 
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     const session = await auth();
     if (!session?.user)
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId)
       return NextResponse.json({ success: false, error: "No tenant" }, { status: 400 });
 

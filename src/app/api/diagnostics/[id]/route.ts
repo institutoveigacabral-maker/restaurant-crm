@@ -8,8 +8,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const { id } = await params;
@@ -26,8 +26,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const session = await auth();
     if (!session?.user) return errorResponse("Não autorizado", 401);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tenantId = (session.user as any).tenantId as string;
+
+    const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
     const { id } = await params;

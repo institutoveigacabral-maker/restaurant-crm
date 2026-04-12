@@ -24,8 +24,7 @@ export async function POST(req: Request) {
     throw e;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const user = session.user as any;
+  const user = session.user;
   const tenantId = user.tenantId as string;
   const tenantName = (user.tenantName as string) || "Restaurante";
 
