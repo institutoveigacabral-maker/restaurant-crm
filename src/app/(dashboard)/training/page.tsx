@@ -263,7 +263,7 @@ export default function TrainingPage() {
     mandatory: false,
   });
 
-  const role = (session?.user as Record<string, unknown> | undefined)?.role as string | undefined;
+  const role = session?.user?.role as string | undefined;
   const isAdmin = role === "admin" || role === "gerente";
 
   const loadData = useCallback(async () => {

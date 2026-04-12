@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-utils";
 import { getFeatureFlags, upsertFeatureFlag } from "@/services/settings";
 
-function isAdmin(session: Record<string, unknown>): boolean {
-  const user = session.user as Record<string, unknown> | undefined;
+function isAdmin(session: { user?: { role?: string } }): boolean {
+  const user = session.user;
   return user?.role === "admin";
 }
 
@@ -30,8 +30,7 @@ export async function POST(req: NextRequest) {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
-    if (!isAdmin(session as unknown as Record<string, unknown>))
-      return errorResponse("Sem permissão", 403);
+    if (!isAdmin(session)) return errorResponse("Sem permissão", 403);
 
     const body = (await req.json()) as {
       key: string;

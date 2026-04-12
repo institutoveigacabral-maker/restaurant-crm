@@ -97,8 +97,8 @@ export default function Sidebar() {
   const tenantTheme = useTenantTheme();
 
   const user = session?.user;
-  const role = (user as Record<string, unknown>)?.role as string;
-  const tenantName = (user as Record<string, unknown>)?.tenantName as string;
+  const role = user?.role;
+  const tenantName = user?.tenantName;
   const initials = user?.name
     ?.split(" ")
     .map((n) => n[0])

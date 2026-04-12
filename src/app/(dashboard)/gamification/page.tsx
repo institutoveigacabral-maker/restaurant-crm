@@ -167,9 +167,7 @@ export default function GamificationPage() {
   const totalXp = profile?.totalXp ?? 0;
   const nextLevelXp = level * 500;
   const xpProgress = Math.min(100, (totalXp / nextLevelXp) * 100);
-  const currentUserId = (session?.user as Record<string, unknown> | undefined)?.id as
-    | number
-    | undefined;
+  const currentUserId = session?.user?.id as number | undefined;
 
   return (
     <div className="p-6 space-y-6">

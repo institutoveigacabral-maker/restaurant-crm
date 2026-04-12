@@ -27,8 +27,7 @@ export default function TenantSwitcher() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const currentTenantId = (session?.user as any)?.tenantId;
+  const currentTenantId = session?.user?.tenantId;
 
   useEffect(() => {
     fetch("/api/tenants")

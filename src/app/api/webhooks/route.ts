@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { successResponse, errorResponse, handleApiError } from "@/lib/api-utils";
 import { getAllWebhooks, createWebhook, updateWebhook, deleteWebhook } from "@/services/webhooks";
 
-function isAdmin(session: Record<string, unknown>): boolean {
-  const user = session.user as Record<string, unknown> | undefined;
+function isAdmin(session: { user?: { role?: string } }): boolean {
+  const user = session.user;
   return user?.role === "admin";
 }
 
@@ -15,8 +15,7 @@ export async function GET() {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
-    if (!isAdmin(session as unknown as Record<string, unknown>))
-      return errorResponse("Sem permissão", 403);
+    if (!isAdmin(session)) return errorResponse("Sem permissão", 403);
 
     const data = await getAllWebhooks(tenantId);
     return successResponse(data);
@@ -32,8 +31,7 @@ export async function POST(req: NextRequest) {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
-    if (!isAdmin(session as unknown as Record<string, unknown>))
-      return errorResponse("Sem permissão", 403);
+    if (!isAdmin(session)) return errorResponse("Sem permissão", 403);
 
     const body = await req.json();
     const { name, url, events } = body as {
@@ -58,8 +56,7 @@ export async function PUT(req: NextRequest) {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
-    if (!isAdmin(session as unknown as Record<string, unknown>))
-      return errorResponse("Sem permissão", 403);
+    if (!isAdmin(session)) return errorResponse("Sem permissão", 403);
 
     const body = await req.json();
     const { id, ...data } = body as {
@@ -86,8 +83,7 @@ export async function DELETE(req: NextRequest) {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
-    if (!isAdmin(session as unknown as Record<string, unknown>))
-      return errorResponse("Sem permissão", 403);
+    if (!isAdmin(session)) return errorResponse("Sem permissão", 403);
 
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get("id"));

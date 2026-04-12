@@ -81,7 +81,7 @@ export async function DELETE(req: NextRequest) {
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
-    const role = (session.user as Record<string, unknown>).role;
+    const role = session.user.role;
     if (role !== "admin" && role !== "gerente") {
       return errorResponse("Sem permissão para excluir", 403);
     }

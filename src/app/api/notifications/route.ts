@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const tenantId = session.user.tenantId;
     if (!tenantId) return errorResponse("No tenant", 400);
 
-    const role = (session.user as Record<string, unknown>).role;
+    const role = session.user.role;
     if (role !== "admin") {
       return errorResponse("Sem permissão para criar notificações", 403);
     }

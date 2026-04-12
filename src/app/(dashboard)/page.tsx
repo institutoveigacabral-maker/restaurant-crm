@@ -217,7 +217,7 @@ async function fetchHubData(): Promise<{
 
 export default function HubPage() {
   const { data: session } = useSession();
-  const tenantName = (session?.user as Record<string, unknown>)?.tenantName as string;
+  const tenantName = session?.user?.tenantName as string;
 
   const [stats, setStats] = useState<HubStats | null>(null);
   const [recentSops, setRecentSops] = useState<SopItem[]>([]);

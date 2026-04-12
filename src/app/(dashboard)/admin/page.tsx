@@ -111,8 +111,8 @@ interface StatsData {
 
 export default function AdminPage() {
   const { data: session } = useSession();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const role = (session?.user as any)?.role as string;
+
+  const role = session?.user?.role as string;
 
   const [stats, setStats] = useState<StatsData | null>(null);
   const [tenantData, setTenantData] = useState<TenantWithStats[]>([]);
@@ -266,8 +266,8 @@ export default function AdminPage() {
   };
 
   // Current plan for the platform
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userTenantId = (session?.user as any)?.tenantId;
+
+  const userTenantId = session?.user?.tenantId;
   const currentPlan = userTenantId
     ? (tenantData.find((t) => t.id === userTenantId)?.plan ?? "starter")
     : "starter";

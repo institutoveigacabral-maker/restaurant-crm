@@ -117,8 +117,7 @@ export default function TenantThemeProvider({ children }: { children: React.Reac
   const { data: session } = useSession();
   const [theme, setTheme] = useState<TenantTheme>(DEFAULT_THEME);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tenantId = (session?.user as any)?.tenantId as string | undefined;
+  const tenantId = session?.user?.tenantId as string | undefined;
 
   const prevTenantId = useRef<string | undefined>(undefined);
 
