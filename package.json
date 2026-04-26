@@ -39,7 +39,7 @@
     "@base-ui/react": "^1.2.0",
     "@neondatabase/serverless": "^1.0.2",
     "@sentry/nextjs": "^10.43.0",
-    "@t3-oss/env-nextjs": "^0.13.10",
+    "@t3-oss/env-nextjs": "^0.13.11",
     "@vercel/analytics": "^1.0.0",
     "@vercel/speed-insights": "^1.0.0",
     "ai": "^6.0.141",
